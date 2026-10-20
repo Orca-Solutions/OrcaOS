@@ -221,7 +221,7 @@ Excluded: the Seeder (20, harness). Golem 1.6 needs both a lower and an upper bo
 
 ## Independent review and known limits
 
-One fresh-context reviewer read the authorization and recovery slice (the reference journal, the adapter, the approval path, the journal agent, the supervisor, the manifest and the test checks) before the recorded run. The findings and what was done:
+One fresh-context reviewer read the authorization and recovery slice (the reference journal, the adapter, the approval path, the journal agent, the supervisor, the manifest and the test checks) before the recorded run. The findings and how each was handled:
 
 | Finding | Severity | Disposition |
 | --- | --- | --- |
