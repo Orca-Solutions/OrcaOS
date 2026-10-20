@@ -25,7 +25,8 @@ Which license covers which path:
 
 Each MIT folder carries its own `LICENSE` file, so a copy of just that folder
 keeps its license. [REUSE.toml](REUSE.toml) records the same mapping in a form
-tools can check: run `reuse lint` to confirm every file is covered. New source
+tools can check: run `reuse lint` to confirm every file is covered. CI runs
+the same check on every pull request. New source
 files also start with a license header, which takes precedence over the map:
 
 <!-- REUSE-IgnoreStart -->

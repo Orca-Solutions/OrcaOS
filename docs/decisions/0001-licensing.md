@@ -21,7 +21,7 @@ and Wasm ecosystem OrcaOS builds on is mostly MIT and Apache-2.0.
   examples (`examples/`).
 - REUSE.toml maps paths to licenses, each MIT folder carries its own
   `LICENSE`, and new source files carry SPDX headers. `reuse lint` checks
-  coverage.
+  coverage, and the License check CI workflow runs it on every pull request.
 
 ## Alternatives considered
 
