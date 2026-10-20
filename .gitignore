@@ -1,0 +1,9 @@
+# Common
+.DS_Store
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Internal, dated infrastructure inventory; never publish with app source.
+/docs/PLATFORM_SNAPSHOT.md
