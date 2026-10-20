@@ -17,7 +17,7 @@ It does not cover the AI participant, the conventional baseline or any OrcaOS ru
 
 | Path | What it is | Scorecard |
 | --- | --- | --- |
-| `shared/orca-ref/` | The shared reference implementation: request identifiers, payload binding, the journal with consume-if-live, receipts on two axes, the recovery decision. No I/O, no clock. 15 tests. | Reported separately |
+| `shared/orca-ref/` | The shared reference implementation: request identifiers, payload binding, the journal with consume-if-live, receipts on two axes, the recovery decision. No I/O, no clock. 18 tests. | Reported separately |
 | `shared/scenario-task/` | Task logic shared by the processors and the drafter: digests and the composed message. | Excluded (task code) |
 | `shared/synthetic-inputs/` | Fabricated contracts `c1@v1`, `c2@v1`, `c3@v1` and the decoys `c1@v2` and `tax-return-2025`. No real personal data. | Excluded |
 | `mock-mail/` | The mock mail service. Port 18081 speaks the mail contract; port 18082 is the harness's control port (logs, fault switches, checkpoints). | Excluded (shared) |
@@ -150,10 +150,10 @@ Counted with `tokei` 12.1.2 (code lines: non-blank, non-comment), on the tagged 
 | Category | Files | Code lines |
 | --- | --- | ---: |
 | Grants (journal hosting, budget ledger, activity coordinators, supervisor) | `journal_agent.rs` 158, `supervisor.rs` 181, `activity.rs` 109, `common.rs` 17 of 31 | 465 |
-| Approvals (display, payload binding, minting, delivery to the adapter) | `approval.rs` | 91 |
-| Recovery (consumption and receipt integration, stopping Golem's resend, status checks, unknown outcomes across close) | `adapter/delivery.rs` 172, `adapter/mod.rs` 105, `adapter/mock_mail.rs` 82 | 359 |
-| Inspection (receipt layer, experimental interface) | `harness/src/inspector.rs` | 207 |
-| **Total counted code** | | **1,122** |
+| Approvals (display, payload binding, minting, delivery to the adapter) | `approval.rs` | 93 |
+| Recovery (consumption and receipt integration, stopping Golem's resend, status checks, unknown outcomes across close) | `adapter/delivery.rs` 172, `adapter/mod.rs` 103, `adapter/mock_mail.rs` 83 | 358 |
+| Inspection (receipt layer, experimental interface) | `harness/src/inspector.rs` | 210 |
+| **Total counted code** | | **1,126** |
 
 Not counted: `lib.rs` module wiring (15), the store helpers in `common.rs` (14, task I/O), the harness checkpoint hook in the adapter (5 in `mock_mail.rs`, 7 call sites and the trait method in `delivery.rs`).
 
@@ -162,9 +162,9 @@ Not counted: `lib.rs` module wiring (15), the store helpers in `common.rs` (14, 
 | Part | Reusable for any adapter contract | Specific to mock mail |
 | --- | ---: | ---: |
 | `adapter/delivery.rs` (the protocol and the `Contract` trait) | 172 | 0 |
-| `adapter/mod.rs` (the agent, scheduling, pending outcomes) | 91 | 14 (credential and validity settings) |
-| `adapter/mock_mail.rs` (submit and status over HTTP) | 0 | 82 |
-| **Total** | **263 (73%)** | **96 (27%)** |
+| `adapter/mod.rs` (the agent, scheduling, pending outcomes) | 89 | 14 (credential and validity settings) |
+| `adapter/mock_mail.rs` (submit and status over HTTP) | 0 | 83 |
+| **Total** | **261 (73%)** | **97 (27%)** |
 
 A second adapter would implement `Contract` (system, operation, idempotency, validity window, payload hash, submit, status) in roughly the size of `mock_mail.rs`, and reuse the rest.
 
@@ -184,11 +184,11 @@ Excluded: the Seeder (20, harness). Golem 1.6 needs both a lower and an upper bo
 
 | Part | Code lines | Status |
 | --- | ---: | --- |
-| `shared/orca-ref` (source) | 1,436 | Reported separately: what OrcaOS would have to maintain |
-| `shared/orca-ref` (tests) | 345 | Reported separately |
+| `shared/orca-ref` (source) | 1,457 | Reported separately: what OrcaOS would have to maintain |
+| `shared/orca-ref` (tests) | 424 | Reported separately |
 | Processors and drafter (`participants.rs` 150, `scenario-task` 77) | 227 | Excluded (shared task code) |
 | Mock mail service | 512 | Excluded (shared) |
-| Harness (excluding the inspector) and Seeder | 1,188 | Excluded |
+| Harness (excluding the inspector) and Seeder | 1,213 | Excluded |
 
 ### Components and hours
 
