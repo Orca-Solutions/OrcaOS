@@ -26,9 +26,10 @@ use crate::common::ADAPTER;
 /// The protocol's validity window; the harness may shorten it for a run with
 /// a dated protocol note, through the ORCA_VALIDITY_MS environment variable.
 const DEFAULT_VALIDITY_MS: u64 = 10 * 60 * 1000;
-const MAX_STATUS_CHECKS: u32 = 20;
-/// The step between status checks that found nothing definitive.
+/// The step between status checks that found nothing definitive, growing
+/// with each check up to MAX_RETRY_MS.
 const RETRY_MS: u64 = 2000;
+const MAX_RETRY_MS: u64 = 5 * 60 * 1000;
 
 #[derive(ConfigSchema)]
 pub struct AdapterConfig {
@@ -88,14 +89,15 @@ impl MailAdapterImpl {
                 entry.checks += 1;
 
                 let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+                // Keep checking until the outcome is definitive, backing off
+                // so a long outage costs little; giving up would leave the
+                // outcome Unknown and the reservation held for good.
                 let at = if *retry_soon || now > entry.not_after_ms {
-                    now + RETRY_MS * entry.checks as u64
+                    now + (RETRY_MS * entry.checks as u64).min(MAX_RETRY_MS)
                 } else {
                     entry.not_after_ms + RETRY_MS
                 };
-                if entry.checks <= MAX_STATUS_CHECKS {
-                    self.schedule(request_id, at);
-                }
+                self.schedule(request_id, at);
             }
             Delivered::Definitive { request_id, .. } => {
                 self.pending.remove(request_id);

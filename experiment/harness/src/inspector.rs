@@ -175,11 +175,14 @@ pub fn say(report: &Value) -> String {
     for o in report["outcomes"].as_array().into_iter().flatten() {
         let outcome = &o["outcome"];
         let state = match outcome["state"].as_str() {
-            Some("reconciled") => format!(
-                "reconciled to {} ({} evidence)",
-                outcome["resolution"]["to"].as_str().unwrap_or("?"),
-                outcome["evidence"].as_str().unwrap_or("?")
-            ),
+            Some("reconciled") => {
+                let resolution = &outcome["resolution"];
+                let to = match (resolution["to"].as_str(), resolution["reason"]["why"].as_str()) {
+                    (Some("failed"), Some(why)) => format!("failed ({})", why.replace('_', " ")),
+                    (to, _) => to.unwrap_or("?").to_string(),
+                };
+                format!("reconciled to {to} ({} evidence)", outcome["evidence"].as_str().unwrap_or("?"))
+            }
             Some(s) => s.to_string(),
             None => "no outcome".into(),
         };

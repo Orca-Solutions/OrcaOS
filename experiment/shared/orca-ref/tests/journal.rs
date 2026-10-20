@@ -25,6 +25,10 @@ struct Fixture {
 
 /// A1 with its send grant, a proposal, an approval and a minted authorization.
 fn approved() -> Fixture {
+    approved_until(60 * MINUTE)
+}
+
+fn approved_until(expires_at_ms: u64) -> Fixture {
     let mut journal = Journal::new();
     let p = principal();
 
@@ -78,9 +82,10 @@ fn approved() -> Fixture {
         Command::MintAuthorization {
             activity: "A1".into(),
             operation: "send".into(),
+            target: "accountant@mock.test".into(),
             adapter: ADAPTER.into(),
             payload_hash: "h1".into(),
-            expires_at_ms: 60 * MINUTE,
+            expires_at_ms,
             grant_id: "g-send".into(),
             proposal_id: Some("prop-1".into()),
         },
@@ -139,6 +144,7 @@ fn sending_needs_the_approval_the_policy_marks() {
         Command::MintAuthorization {
             activity: "A1".into(),
             operation: "send".into(),
+            target: "accountant@mock.test".into(),
             adapter: ADAPTER.into(),
             payload_hash: "h1".into(),
             expires_at_ms: 60 * MINUTE,
@@ -159,6 +165,7 @@ fn an_approval_produces_one_authorization() {
         Command::MintAuthorization {
             activity: "A1".into(),
             operation: "send".into(),
+            target: "accountant@mock.test".into(),
             adapter: ADAPTER.into(),
             payload_hash: "h1".into(),
             expires_at_ms: 60 * MINUTE,
@@ -298,7 +305,9 @@ fn reconciliation_survives_close_and_never_reopens() {
     assert_eq!(
         f.journal.receipts[&request_id].outcome,
         Outcome::Reconciled {
-            resolution: Resolution::CertifiedNotStarted,
+            resolution: Resolution::Failed {
+                reason: FailureReason::CertifiedNotStarted,
+            },
             evidence: Evidence::Acknowledged,
         }
     );
@@ -390,4 +399,83 @@ fn revocation_cascades_to_derived_grants_and_child_activities() {
 
     assert!(!f.journal.grant_live("g-read-1", 6));
     assert_eq!(f.journal.activities["A1.1"].state, ActivityState::Suspended);
+}
+
+#[test]
+fn an_approval_never_widens_the_grant() {
+    let mut journal = approved().journal;
+    let p = principal();
+    for (seq, command) in [
+        Command::Proposal {
+            proposal_id: "prop-2".into(),
+            activity: "A1".into(),
+            holder: "drafter".into(),
+            payload_hash: "h2".into(),
+        },
+        Command::Approval {
+            proposal_id: "prop-2".into(),
+            payload_hash: "h2".into(),
+        },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        journal.apply(p.clone(), 10 + seq as u64, command);
+    }
+
+    // Approved, but addressed outside the send grant's object.
+    let response = journal.apply(
+        Source::service("approval-path"),
+        12,
+        Command::MintAuthorization {
+            activity: "A1".into(),
+            operation: "send".into(),
+            target: "other@mock.test".into(),
+            adapter: ADAPTER.into(),
+            payload_hash: "h2".into(),
+            expires_at_ms: 60 * MINUTE,
+            grant_id: "g-send".into(),
+            proposal_id: Some("prop-2".into()),
+        },
+    );
+
+    assert!(matches!(response, Response::Refused { .. }));
+}
+
+#[test]
+fn a_certificate_before_the_window_closes_is_not_trusted() {
+    let mut f = approved();
+    let Response::Consumed { request_id, .. } = consume(&mut f, 4, "d1") else {
+        panic!("not consumed");
+    };
+    f.journal.apply(
+        adapter(),
+        5,
+        Command::Reconciliation {
+            request_id: request_id.clone(),
+            observation: StatusObservation::NotReceived { certified: true },
+        },
+    );
+
+    assert_eq!(f.journal.receipts[&request_id].outcome, Outcome::Unknown);
+    assert!(!f.journal.receipts[&request_id].reservation_released);
+}
+
+#[test]
+fn an_expired_authorization_is_never_re_dispatched() {
+    let mut f = approved_until(5);
+    let Response::Consumed { request_id, .. } = consume(&mut f, 4, "d1") else {
+        panic!("not consumed");
+    };
+    let response = f.journal.apply(
+        adapter(),
+        6,
+        Command::ReDispatchIfLive {
+            request_id,
+            delivery: "d1".into(),
+            idempotent: true,
+        },
+    );
+
+    assert!(matches!(response, Response::Refused { .. }));
 }

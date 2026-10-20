@@ -71,8 +71,8 @@ pub enum Evidence {
 #[serde(tag = "to", rename_all = "snake_case")]
 pub enum Resolution {
     Acknowledged { message_id: String },
-    Refused { reason: String },
-    CertifiedNotStarted,
+    /// Refused by the external system, or certified not started.
+    Failed { reason: FailureReason },
 }
 
 /// The outcome state of a consequential action.

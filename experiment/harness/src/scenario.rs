@@ -115,6 +115,15 @@ impl<'a> Run<'a> {
 
     /// Releases every hold this run still has, including ones whose
     /// connection died with the platform.
+    /// Releases this run's holds at one checkpoint only.
+    pub fn release_at(&self, point: &str) {
+        for h in self.mock.held(&self.id).iter().filter(|h| h["point"] == point) {
+            if let Some(id) = h["id"].as_u64() {
+                let _ = self.mock.release(id);
+            }
+        }
+    }
+
     pub fn release_all(&self) {
         for h in self.mock.held(&self.id) {
             if let Some(id) = h["id"].as_u64() {

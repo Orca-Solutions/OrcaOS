@@ -200,6 +200,13 @@ fn t2(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
         checks.push(check(name, out.contains("refused") && out.contains(reason), json!(out)));
     }
 
+    // An approval adds to the send grant; it never widens it. A proposal
+    // addressed outside the grant is refused at mint even once approved.
+    let proposal = r.call(&r.agent("ApprovalPath"), "submit", &[&lit("A1"), &lit("drafter"), &lit(&recipient.to_string())])?;
+    let minted = r.approve(&proposal, "g-send");
+    let refused = matches!(&minted, Err(e) if e.contains("does not cover other@mock.test"));
+    checks.push(check("an approved proposal to a recipient outside the grant is refused at mint", refused, json!(minted.err())));
+
     let delivered = deliveries(r);
     let one = delivered.len() == 1 && delivered[0]["payload_hash"] == approved_hash;
     checks.push(check("the delivery log shows one delivery carrying the approved hash", one, json!(delivered)));
@@ -484,34 +491,47 @@ fn crash_then(r: &Run, seed: u64, point: &str, lose_request: bool, action: &dyn 
     std::thread::sleep(jitter(seed, 300));
     let crashed_at = now_ms();
     let restart = r.golem.kill_and_restart()?;
-    r.release_all();
+    // The crashed process's hold is stale. The "recover" hold stays, so the
+    // adapter cannot act on recovery before the action below commits.
+    r.release_at(point);
 
-    // Before the adapter acts again: it is either not yet resumed or held
-    // at the start of its recovery path.
     action(r)?;
-    let acted_at = now_ms();
 
     let resumed = r.wait_held("recover", RECOVERY);
     notes["crashed_at_ms"] = json!(crashed_at);
-    notes["acted_at_ms"] = json!(acted_at);
     notes["restart_ms"] = json!(restart.as_millis() as u64);
     notes["resumed_into_recovery"] = json!(resumed.is_some());
     if let Some(id) = resumed {
         r.mock.release(id)?;
     }
-    Ok(acted_at)
+    Ok(crashed_at)
+}
+
+/// The cancellation or revocation committed before the adapter's first
+/// status check, so the recovery ran after it.
+fn acted_before_recovery(journal: &Value, kind: &str, checks: &mut Vec<Check>) {
+    let acted = entries(journal, kind).first().and_then(|e| e["seq"].as_u64());
+    let first_check = entries(journal, "reconciliation").first().and_then(|e| e["seq"].as_u64());
+    let ordered = matches!((acted, first_check), (Some(a), Some(c)) if a < c);
+    checks.push(check(
+        &format!("the {kind} committed before the adapter's first status check"),
+        ordered,
+        json!({ kind: acted, "first_reconciliation": first_check }),
+    ));
 }
 
 fn after(list: &[Value], at_ms: u64) -> Vec<Value> {
     list.iter().filter(|e| e["at_ms"].as_u64().unwrap_or(0) >= at_ms).cloned().collect()
 }
 
-/// The checks every variant after a cancellation or revocation shares.
-fn no_resend(r: &Run, acted_at: u64, journal: &Value, checks: &mut Vec<Check>) {
-    let late = after(&attempts(r), acted_at);
-    checks.push(check("zero submission attempts after the cancellation or revocation", late.is_empty(), json!(late)));
+/// The checks every variant after a cancellation or revocation shares. The
+/// window starts at the crash, before the action, so it is stricter than
+/// "after the cancellation or revocation" and catches a platform resend too.
+fn no_resend(r: &Run, crashed_at: u64, journal: &Value, checks: &mut Vec<Check>) {
+    let late = after(&attempts(r), crashed_at);
+    checks.push(check("zero submission attempts after the crash, so none after the cancellation or revocation", late.is_empty(), json!(late)));
     checks.push(check("nothing is re-dispatched", entries(journal, "re_dispatch").is_empty(), json!(entries(journal, "re_dispatch"))));
-    let wire_late = after(&r.mock.entries("wire", &r.id), acted_at);
+    let wire_late = after(&r.mock.entries("wire", &r.id), crashed_at);
     checks.push(check("Golem did not resend the request on its own", wire_late.is_empty(), json!(wire_late)));
 }
 
@@ -527,6 +547,7 @@ fn t7a(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
     checks.push(check("status checks report not received", first["status"] == "not_received", first));
     checks.push(check("no submission entry", entries(&journal, "submission").is_empty(), json!(entries(&journal, "submission"))));
     checks.push(check("while the window is open the outcome stays Unknown", outcome_state(&journal, RID) == "unknown", receipt(&journal, RID)["outcome"].clone()));
+    acted_before_recovery(&journal, "cancellation", checks);
     no_resend(r, acted, &journal, checks);
     notes["not_after_ms"] = receipt(&journal, RID)["not_after_ms"].clone();
     Ok(())
@@ -546,6 +567,7 @@ fn t7b(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
     std::thread::sleep(Duration::from_secs(3));
     let journal = r.journal();
     checks.push(check("re-granting revives nothing", activity_state(&journal, "A1") == "running" && entries(&journal, "submission").is_empty(), json!(activity_state(&journal, "A1"))));
+    acted_before_recovery(&journal, "revocation", checks);
     no_resend(r, acted, &journal, checks);
     notes["not_after_ms"] = receipt(&journal, RID)["not_after_ms"].clone();
     Ok(())
@@ -563,7 +585,8 @@ fn t7c(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
         json!({ "outcome": outcome, "source": source }),
     ));
     let before = attempts(r).iter().filter(|a| a["at_ms"].as_u64().unwrap_or(u64::MAX) < acted).count();
-    checks.push(check("one attempt, made before the cancellation", before == 1, json!(attempts(r))));
+    checks.push(check("one attempt, made before the crash and the cancellation", before == 1, json!(attempts(r))));
+    acted_before_recovery(&journal, "cancellation", checks);
     no_resend(r, acted, &journal, checks);
     Ok(())
 }
@@ -584,6 +607,7 @@ fn t7d(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
     checks.push(check("the inspector lists A1 among closed activities with unknown outcomes", listed, report["closed_with_unknown_outcomes"].clone()));
     let lost = r.mock.entries("wire", &r.id).iter().filter(|w| w["lost_in_transit"] == true).count();
     checks.push(check("the original request was lost in transit, not delivered", lost == 1 && deliveries(r).is_empty(), json!(r.mock.entries("wire", &r.id))));
+    acted_before_recovery(&journal, "cancellation", checks);
     no_resend(r, acted, &journal, checks);
     notes["not_after_ms"] = receipt(&journal, RID)["not_after_ms"].clone();
     Ok(())
@@ -612,7 +636,9 @@ pub fn after_window(ctx: &Ctx, rep: &Rep) -> Vec<Check> {
     let r = Run::new(rep.run.clone(), ctx.golem, ctx.mock);
     let journal = r.journal();
     let outcome = receipt(&journal, RID)["outcome"].clone();
-    let certified = outcome["state"] == "reconciled" && outcome["resolution"]["to"] == "certified_not_started";
+    let certified = outcome["state"] == "reconciled"
+        && outcome["resolution"]["to"] == "failed"
+        && outcome["resolution"]["reason"]["why"] == "certified_not_started";
     let mut checks = vec![check("after the window closes: reconciled to Failed (certified not started)", certified, outcome)];
 
     if rep.test == "7a" {

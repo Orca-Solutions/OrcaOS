@@ -73,6 +73,9 @@ impl Contract for MockMail {
                     (200, Some("refused")) => SubmitResult::Refused {
                         reason: reply["reason"].as_str().unwrap_or_default().into(),
                     },
+                    // A server error says nothing about whether the message was
+                    // accepted first; only a status check can settle it.
+                    (code @ 500..=599, _) => SubmitResult::NoReply { detail: format!("HTTP {code}: {reply}") },
                     (code, _) => SubmitResult::Refused { reason: format!("HTTP {code}: {reply}") },
                 }
             }

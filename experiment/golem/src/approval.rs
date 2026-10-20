@@ -98,10 +98,12 @@ impl ApprovalPath for ApprovalPathImpl {
             return format!("refused: {reason}");
         }
 
+        let recipient = serde_json::from_str::<Message>(&message).map(|m| m.to).unwrap_or_default();
         let expires_at_ms = now_ms() + AUTHORIZATION_TTL_MS;
         let command = Command::MintAuthorization {
             activity: activity.clone(),
             operation: "send".into(),
+            target: recipient,
             adapter: ADAPTER.into(),
             payload_hash: stored_hash,
             expires_at_ms,

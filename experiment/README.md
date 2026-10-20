@@ -196,6 +196,19 @@ Excluded: the Seeder (20, harness). Golem 1.6 needs both a lower and an upper bo
 - **Components we only operate:** the Golem server, run as a single local binary with its built-in storage.
 - **Hours:** not logged per category. The build was written by one agent session on 2026-10-20 from about 13:50 UTC, including probing Golem's card semantics; agent hours are not comparable to the conventional build unless that is built the same way.
 
+## Independent review and known limits
+
+One fresh-context reviewer read the authorization and recovery slice (the reference journal, the adapter, the approval path, the journal agent, the supervisor, the manifest and the test checks) before the recorded run. The findings and what was done:
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| The send grant's recipient was never compared with the message, so an approved proposal to another address would have been sent. | Major | Fixed. Minting takes the operation's target and refuses one outside the grant's object; a reference test and a test 2 check cover it. |
+| Test 7's "no attempt after the cancellation" window started when the harness's call returned, after the cancellation had committed. | Major (harness) | Fixed. Attempts and wire entries are now checked from the crash onwards, which is stricter. |
+| The harness could release a recovery hold before acting, and did not check that the action committed before the adapter's first status check. | Minor (harness) | Fixed. Only the stale crash-point hold is released, and each variant checks that order. The Golem server must be up to record a cancellation, so the action happens after the server restarts but while the adapter is held at the start of its recovery path. |
+| A certified non-start was recorded as a reconciliation to "certified not started" rather than to Failed, and the journal accepted a certificate before the window closed. | Minor | Fixed. It is now a reconciliation to Failed (certified not started), and the journal ignores a certificate before the window closes by its own clock. |
+| Re-dispatch did not check the authorization's expiry; a server error on submit was treated as a refusal; status checks stopped after 20 tries. | Minor | Fixed. Expiry is checked, a 5xx reply leaves the outcome Unknown for a status check to settle, and checks back off to every 5 minutes instead of stopping. |
+| The journal trusts the source its caller names, and any agent that can invoke the journal could post any command. | Minor | Open. Only trusted services (Supervisor, Activity, ApprovalPath, MailAdapter) hold a card that reaches the journal; no participant does. Golem does not hand the callee its caller's identity in a form this build used, so binding commands to callers would be custom machinery. |
+
 ## What was not built
 
-The AI participant and its model-provider grant, the conventional baseline, promotion to the principal's workspace, the parity review of both builds, and the performance measurements (startup latency, peak memory, oplog growth, the no-controls baseline). The independent review of the enforcement design that the scorecard names is also outstanding.
+The AI participant and its model-provider grant, the conventional baseline, promotion to the principal's workspace, the parity review of both builds, and the performance measurements (startup latency, peak memory, oplog growth, the no-controls baseline). The independent review of the enforcement design that the scorecard names is also outstanding; the code review above is narrower.

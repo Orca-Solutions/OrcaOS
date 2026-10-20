@@ -64,6 +64,9 @@ pub enum Command {
     MintAuthorization {
         activity: String,
         operation: String,
+        /// What the operation acts on, such as the recipient of a send. It
+        /// must be the grant's object.
+        target: String,
         adapter: String,
         payload_hash: String,
         expires_at_ms: u64,
@@ -433,6 +436,7 @@ impl Journal {
             Command::MintAuthorization {
                 activity,
                 operation,
+                target,
                 adapter,
                 payload_hash,
                 expires_at_ms,
@@ -443,6 +447,7 @@ impl Journal {
                 now_ms,
                 activity,
                 operation,
+                target,
                 adapter,
                 payload_hash,
                 expires_at_ms,
@@ -933,6 +938,7 @@ impl Journal {
         now_ms: u64,
         activity: String,
         operation: String,
+        target: String,
         adapter: String,
         payload_hash: String,
         expires_at_ms: u64,
@@ -955,6 +961,16 @@ impl Journal {
                 &object,
                 "mint authorization",
                 format!("grant {grant_id} does not cover {operation} in {activity}"),
+            );
+        }
+        // An approval adds to sufficient authority; it never stands in for it.
+        if grant.object != target {
+            return self.refuse(
+                source,
+                now_ms,
+                &object,
+                "mint authorization",
+                format!("grant {grant_id} does not cover {target}"),
             );
         }
         if expires_at_ms <= now_ms {
@@ -1247,7 +1263,9 @@ impl Journal {
             Some("the request's validity window has closed".to_string())
         } else {
             let auth = &self.authorizations[&receipt.authorization];
-            if !self.activity_open(&receipt.activity) {
+            if now_ms >= auth.expires_at_ms {
+                Some(format!("authorization {} has expired", auth.id))
+            } else if !self.activity_open(&receipt.activity) {
                 let state = self.activities.get(&receipt.activity).map(|a| a.state);
                 Some(format!("activity {} is {state:?}", receipt.activity))
             } else if !self.grant_live(auth.basis.grant_id(), now_ms) {
@@ -1282,9 +1300,15 @@ impl Journal {
             StatusObservation::Accepted { message_id } => Some(Resolution::Acknowledged {
                 message_id: message_id.clone(),
             }),
-            StatusObservation::Refused { reason } => Some(Resolution::Refused { reason: reason.clone() }),
-            StatusObservation::NotReceived { certified: true } => Some(Resolution::CertifiedNotStarted),
-            StatusObservation::NotReceived { certified: false } | StatusObservation::Unavailable { .. } => None,
+            StatusObservation::Refused { reason } => Some(Resolution::Failed {
+                reason: FailureReason::Refused { reason: reason.clone() },
+            }),
+            // A certificate counts only once the request's validity window
+            // has closed by the journal's clock too.
+            StatusObservation::NotReceived { certified: true } if now_ms >= receipt.not_after_ms => Some(Resolution::Failed {
+                reason: FailureReason::CertifiedNotStarted,
+            }),
+            StatusObservation::NotReceived { .. } | StatusObservation::Unavailable { .. } => None,
         };
 
         // A status result never overwrites a definitive outcome.
@@ -1306,7 +1330,10 @@ impl Journal {
         let release = match (&outcome, &receipt.reservation, receipt.reservation_released) {
             (
                 Outcome::Reconciled {
-                    resolution: Resolution::CertifiedNotStarted,
+                    resolution:
+                        Resolution::Failed {
+                            reason: FailureReason::CertifiedNotStarted,
+                        },
                     ..
                 },
                 Some(reservation),
