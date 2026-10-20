@@ -7,7 +7,7 @@ Practical delivery policy v3.1.4. Read SOFTWARE_OPERATING_GUIDE.md and PR_WORKFL
 - Install:
 - Dev server:
 - Focused tests:
-- Lint / typecheck:
+- Lint / typecheck: `reuse lint` (every file has a license; see REUSE.toml)
 - Build:
 
 ## Start here
@@ -37,3 +37,4 @@ Read WORKING_RECORD.md, the relevant code, approved brief/decisions and docs ind
 
 ## Project-specific
 <!-- Approved exceptions, commands and conventions only. -->
+- Licensing (docs/decisions/0001-licensing.md): `sdk/`, `interfaces/` and `examples/` are MIT; everything else is GPL-3.0-or-later. Start every new source file with `SPDX-FileCopyrightText: The OrcaOS Authors` and the matching `SPDX-License-Identifier`, and keep REUSE.toml in step with any new top-level folder. Never copy GPL code into an MIT folder.

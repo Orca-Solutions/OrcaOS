@@ -9,15 +9,34 @@ OrcaOS uses two licenses:
 - **The runtime and system services** are licensed under the GNU General
   Public License, version 3 or any later version (SPDX:
   `GPL-3.0-or-later`). See [LICENSE](LICENSE).
-- **Everything other software builds against** (the component SDK,
-  contract and interface definitions, and examples) is licensed under the
-  MIT License (SPDX: `MIT`). See [LICENSE-MIT](LICENSE-MIT). Writing a
+- **Everything other software builds against** is licensed under the MIT
+  License (SPDX: `MIT`). See [LICENSES/MIT.txt](LICENSES/MIT.txt). Writing a
   component for OrcaOS does not require licensing that component under the
   GPL.
 
-Code that is MIT-licensed carries an `SPDX-License-Identifier: MIT` header
-or lives in a directory with its own copy of the MIT license. Everything
-else falls under the GPL.
+Which license covers which path:
+
+| Path | License |
+|---|---|
+| `sdk/` (component SDK) | MIT |
+| `interfaces/` (contract and interface definitions) | MIT |
+| `examples/` | MIT |
+| Everything else (runtime, system services, docs, tooling) | GPL-3.0-or-later |
+
+Each MIT folder carries its own `LICENSE` file, so a copy of just that folder
+keeps its license. [REUSE.toml](REUSE.toml) records the same mapping in a form
+tools can check: run `reuse lint` to confirm every file is covered. New source
+files also start with a license header, which takes precedence over the map:
+
+<!-- REUSE-IgnoreStart -->
+```text
+SPDX-FileCopyrightText: The OrcaOS Authors
+SPDX-License-Identifier: GPL-3.0-or-later   (or MIT under sdk/, interfaces/, examples/)
+```
+<!-- REUSE-IgnoreEnd -->
+
+The full license texts live in [LICENSES/](LICENSES); `LICENSE` at the root is
+a copy of the GPL so GitHub detects it.
 
 ## Project scaffold
 
