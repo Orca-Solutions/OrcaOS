@@ -1,0 +1,237 @@
+# SPDX-FileCopyrightText: The OrcaOS Authors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Scenario A on Golem 1.6.0, properly restricted.
+#
+# Scorecard: configuration (counted separately from code). Every agent type
+# declares an explicit initialCard that lists nothing beyond the grant table in
+# the experiment plan, so Golem's broad default card is never used. Each agent
+# takes the run identifier as its first constructor argument, so repetitions
+# are separate agents and never share state.
+#
+# $schema: https://schema.golem.cloud/app/golem/1.6.0/golem.schema.json
+
+manifestVersion: 1.6.0
+
+app: scenario-a
+
+environments:
+  local:
+    server: local
+    componentPresets: debug
+
+components:
+  scenario-a:main:
+    dir: ""
+    templates: rust
+
+# Golem would otherwise retry a failed request to the mock mail service on its
+# own, which is a resend the protocol forbids. The adapter decides retries.
+retryPolicyDefaults:
+  local:
+    mock-mail-never:
+      priority: 100
+      predicate:
+        propEq: { property: "uri-host", value: "127.0.0.1" }
+      policy: never
+
+agents:
+  # The journal writer: the single point of order. Called only by trusted
+  # services; participants hold no card to reach it.
+  Journal:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+        negative: []
+
+  # Acts for principal-1: activities, grants, revocation, cancellation, close,
+  # participant replacement. The two narrowing grants exist only so it can
+  # install an empty store card into a replaced participant (see README).
+  Supervisor:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "card(?account) @ ?agent : * : *"
+          - "kv(?env) @ ?component/* : read : revoked.none"
+          - "kv(?env) @ ?component/* : write : revoked.none"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "card(?account) @ ?agent : * : *"
+          - "kv(?env) @ ?component/* : read : revoked.none"
+          - "kv(?env) @ ?component/* : write : revoked.none"
+        negative: []
+
+  # One coordinator per activity: runs its participants, reserves budget and
+  # records their outputs.
+  Activity:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "agent(?component/Processor1(*)) @ ?agent : invoke : *"
+          - "agent(?component/Processor2(*)) @ ?agent : invoke : *"
+          - "agent(?component/Processor2Alt(*)) @ ?agent : invoke : *"
+          - "agent(?component/Drafter(*)) @ ?agent : invoke : *"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "agent(?component/Processor1(*)) @ ?agent : invoke : *"
+          - "agent(?component/Processor2(*)) @ ?agent : invoke : *"
+          - "agent(?component/Processor2Alt(*)) @ ?agent : invoke : *"
+          - "agent(?component/Drafter(*)) @ ?agent : invoke : *"
+        negative: []
+
+  # processor-1 (A1.1): read c1@v1 and c2@v1, append to out/A1.1.
+  Processor1:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.c1@v1"
+          - "kv(?env) @ ?agent : read : docs.c2@v1"
+          - "kv(?env) @ ?agent : write : out-A1-1.*"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.c1@v1"
+          - "kv(?env) @ ?agent : read : docs.c2@v1"
+          - "kv(?env) @ ?agent : write : out-A1-1.*"
+        negative: []
+
+  # processor-2 (A1.2): read c3@v1, append to out/A1.2 and read its own notes.
+  Processor2:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.c3@v1"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+          - "kv(?env) @ ?agent : write : out-A1-2.*"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.c3@v1"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+          - "kv(?env) @ ?agent : write : out-A1-2.*"
+        negative: []
+
+  # The replacement for test 5: the same contract, another implementation,
+  # equivalent grants.
+  Processor2Alt:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.c3@v1"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+          - "kv(?env) @ ?agent : write : out-A1-2.*"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.c3@v1"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+          - "kv(?env) @ ?agent : write : out-A1-2.*"
+        negative: []
+
+  # drafter (A1): read both output spaces, write its draft, submit a proposal.
+  Drafter:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : out-A1-1.*"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+          - "kv(?env) @ ?agent : write : out-A1.*"
+          - "agent(?component/ApprovalPath(*)) @ ?agent : invoke : submit"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : out-A1-1.*"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+          - "kv(?env) @ ?agent : write : out-A1.*"
+          - "agent(?component/ApprovalPath(*)) @ ?agent : invoke : submit"
+        negative: []
+
+  # Displays proposals, records approvals, mints authorizations and hands each
+  # one straight to the mail adapter.
+  ApprovalPath:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "agent(?component/MailAdapter(*)) @ ?agent : invoke : deliver"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "agent(?component/MailAdapter(*)) @ ?agent : invoke : deliver"
+        negative: []
+
+  # The trusted mail adapter: the only holder of the mail credential and the
+  # only agent with a network card.
+  MailAdapter:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "agent(?component/MailAdapter(*)) @ ?agent : invoke : reconcile"
+          - "config(?agent) @ ?agent : read : mail_credential"
+          - "secret(?env) @ ?agent : hold : *"
+          - "secret(?env) @ ?agent : reveal : *"
+          - "network() @ ?agent : connect : 127.0.0.1:18081"
+          - "network() @ ?agent : connect : 127.0.0.1:18082"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "agent(?component/Journal(*)) @ ?agent : invoke : *"
+          - "agent(?component/MailAdapter(*)) @ ?agent : invoke : reconcile"
+          - "config(?agent) @ ?agent : read : mail_credential"
+          - "secret(?env) @ ?agent : hold : *"
+          - "secret(?env) @ ?agent : reveal : *"
+          - "network() @ ?agent : connect : 127.0.0.1:18081"
+          - "network() @ ?agent : connect : 127.0.0.1:18082"
+        negative: []
+
+  # Harness infrastructure, not a participant: loads the synthetic inputs and
+  # reads stores back for snapshot hashes.
+  Seeder:
+    initialCard:
+      lowerBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.*"
+          - "kv(?env) @ ?agent : write : docs.*"
+          - "kv(?env) @ ?agent : read : out-A1.*"
+          - "kv(?env) @ ?agent : read : out-A1-1.*"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+        negative: []
+      upperBound:
+        positive:
+          - "env(?agent) @ ?agent : read : *"
+          - "kv(?env) @ ?agent : read : docs.*"
+          - "kv(?env) @ ?agent : write : docs.*"
+          - "kv(?env) @ ?agent : read : out-A1.*"
+          - "kv(?env) @ ?agent : read : out-A1-1.*"
+          - "kv(?env) @ ?agent : read : out-A1-2.*"
+        negative: []
