@@ -13,6 +13,29 @@ It does not cover the AI participant, the conventional baseline or any OrcaOS ru
 - Scorecard: [Custom machinery](#custom-machinery) below.
 - Findings about Golem: [Findings](#findings) below. Several of them change how the plan's configuration rules could be followed.
 
+## Results, 2026-10-20
+
+Golem 1.6.0 with the code here passed every test in this conformance suite, under the assumptions recorded in [record.json](results/2026-10-20-golem/record.json): one host, one principal, synthetic data, the mock mail service, and the repository at commit `34e9316` with a clean tree.
+
+| Test | Repetitions | Result | Median time per repetition |
+| --- | ---: | --- | ---: |
+| 1. An unrelated read is denied | 1 | Passed | 1.7 s |
+| 2. A changed payload is not authorized | 1 | Passed | 2.8 s |
+| 3. Revoke, then restart | 20 | Passed | 35 s |
+| 3 at P1 (revoked after the check, before consumption) | 20 | Passed | 2.6 s |
+| 3 at P2 (revoked after consumption, before the send) | 20 | Passed | 3.6 s |
+| 4. A lost acknowledgment | 1 | Passed | 2.9 s |
+| 4 with the status endpoint offline | 1 | Passed | 12 s |
+| 5. A participant is replaced | 1 | Passed | 2.0 s |
+| 6. Two children share one budget | 100 | Passed | 1.0 s |
+| 7a. C1, then cancel | 20 | Passed, and 20/20 certified not started after the window | 33 s |
+| 7b. C1, then revoke | 20 | Passed, and 20/20 after the window | 36 s |
+| 7c. C2, then cancel | 20 | Passed | 33 s |
+| 7d. C2 with the request lost, then cancel and close | 20 | Passed, and 20/20 after the window | 33 s |
+| 7e. C1, nothing (control) | 20 | Passed | 34 s |
+
+In 7a to 7d the mock's attempt log, written before deduplication, showed no submission attempt and no wire request after the crash in any repetition, so Golem did not resend the in-flight request and the adapter did not re-dispatch. In 7e the adapter re-dispatched once with the same identifier, journaled as a re-dispatch. Card lists matched `golem.yaml` before and after the suite. Crash repetitions include a SIGKILL and restart of the Golem server and its roughly 30-second resume.
+
 ## Layout
 
 | Path | What it is | Scorecard |
