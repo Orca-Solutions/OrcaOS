@@ -1,0 +1,20 @@
+# Machine-readable map of which license covers which path in OrcaOS.
+# When several annotations match a file, the last one listed wins.
+# An SPDX header inside a file overrides this map for that file.
+# Check coverage with `reuse lint` (https://reuse.software).
+version = 1
+
+# Default: the runtime, system services, docs and tooling.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "The OrcaOS Authors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# What other software builds against: the component SDK, contract and
+# interface definitions, and examples.
+[[annotations]]
+path = ["sdk/**", "interfaces/**", "examples/**"]
+precedence = "closest"
+SPDX-FileCopyrightText = "The OrcaOS Authors"
+SPDX-License-Identifier = "MIT"
