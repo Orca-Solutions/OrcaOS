@@ -1,12 +1,3 @@
-# Agent tooling and operating documents: the code is public, the method is not.
-/.claude
-CLAUDE.md
-AGENTS.md
-PR_WORKFLOW.md
-docs/AGENT_ROLES.md
-HANDOFF_TEMPLATES.md
-SOFTWARE_OPERATING_GUIDE.md
-
 # Common
 .DS_Store
 node_modules/
