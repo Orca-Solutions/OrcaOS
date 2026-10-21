@@ -259,8 +259,8 @@ Answered by Orca Keel on 2026-10-21 and folded into the surfaces above:
 - [x] Switch off voids standing grants and withdraws pending proposals, because "off means off" is a sentence said to families (surface 1).
 - [x] The receipt word the shell shows is Acknowledged; the brand book's "Accepted" is for the brand thread to reconcile.
 - [x] G-1 clock changes and G-2 whose authority a scheduled run acts on (surface 9); G-3 cross-app reads (surface 6); G-4 a member's pending approvals (surface 4). G-2 differs from Orca Keel's preferred answer; the reason is under surface 9.
+- [x] Who builds the fake: Diamond Dog builds it, in its own thread, and Orca Keel writes and runs the eight tests' fixtures, so one side owns every refusal. Decided by jason on 2026-10-21.
 
 Still open for jason:
 
 - [ ] The contract goes into the repo under `interfaces/` (MIT): a pull request is open for it; merge is jason's.
-- [ ] Who builds the fake. Orca Keel recommends Diamond Dog builds it and Orca Keel writes and runs the eight tests' fixtures, so one side owns every refusal.
