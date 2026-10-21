@@ -1,0 +1,6 @@
+SYNTHETIC CONTRACT C1, EDITED AFTER PINNING (fabricated test data)
+Parties: Northwind Test Supplies and Example Holdings
+Term: 2026-07-01 to 2028-06-30
+Value: 21,000 test-dollars per year
+Renewal: none
+Payment: monthly, net 15
