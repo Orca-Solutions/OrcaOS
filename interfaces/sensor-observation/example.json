@@ -1,0 +1,123 @@
+{
+  "batch": {
+    "observations": [
+      {
+        "source_id": "00000000-0000-4000-8000-000000000101",
+        "channel": "temperature",
+        "native_id": "b17:000412",
+        "event_at": "2026-10-21T15:30:00Z",
+        "clock": "synced",
+        "value": 13.9
+      },
+      {
+        "source_id": "00000000-0000-4000-8000-000000000101",
+        "channel": "humidity",
+        "native_id": "b17:000413",
+        "event_at": "2026-10-21T15:30:00Z",
+        "clock": "synced",
+        "value": 61
+      },
+      {
+        "source_id": "00000000-0000-4000-8000-000000000103",
+        "channel": "leak",
+        "native_id": "b17:000414",
+        "event_at": "2026-10-21T15:31:07Z",
+        "clock": "synced",
+        "value": false,
+        "quality": "ok"
+      }
+    ],
+    "coverage": [
+      {
+        "source_id": "00000000-0000-4000-8000-000000000101",
+        "channels": [
+          "temperature",
+          "humidity"
+        ],
+        "period": {
+          "start": "2026-10-21T15:30:00Z",
+          "end": "2026-10-21T15:35:00Z"
+        },
+        "clock": "synced"
+      },
+      {
+        "source_id": "00000000-0000-4000-8000-000000000103",
+        "channels": [
+          "leak"
+        ],
+        "period": {
+          "start": "2026-10-21T14:35:00Z",
+          "end": "2026-10-21T15:35:00Z"
+        },
+        "clock": "synced"
+      }
+    ]
+  },
+  "result": {
+    "received_at": "2026-10-21T15:35:02Z",
+    "accepted": 2,
+    "duplicates": 1,
+    "discarded": 0,
+    "rejected": 0,
+    "coverage_accepted": 2,
+    "items": [
+      {
+        "kind": "observation",
+        "index": 0,
+        "status": "duplicate",
+        "code": null
+      }
+    ]
+  },
+  "channels_by_source": {
+    "00000000-0000-4000-8000-000000000101": [
+      {
+        "key": "temperature",
+        "quantity": "temperature",
+        "unit": "Cel",
+        "value_kind": "number",
+        "states": [],
+        "reporting": "periodic",
+        "expected_interval_seconds": 300
+      },
+      {
+        "key": "humidity",
+        "quantity": "relative_humidity",
+        "unit": "%",
+        "value_kind": "number",
+        "states": [],
+        "reporting": "periodic",
+        "expected_interval_seconds": 300
+      },
+      {
+        "key": "battery",
+        "quantity": "battery",
+        "unit": "%",
+        "value_kind": "number",
+        "states": [],
+        "reporting": "periodic",
+        "expected_interval_seconds": 3600
+      }
+    ],
+    "00000000-0000-4000-8000-000000000103": [
+      {
+        "key": "leak",
+        "quantity": "water_leak",
+        "unit": null,
+        "value_kind": "boolean",
+        "states": [],
+        "reporting": "on_change",
+        "expected_interval_seconds": 3600
+      },
+      {
+        "key": "battery",
+        "quantity": "battery",
+        "unit": "%",
+        "value_kind": "number",
+        "states": [],
+        "reporting": "periodic",
+        "expected_interval_seconds": 3600
+      }
+    ]
+  }
+}
