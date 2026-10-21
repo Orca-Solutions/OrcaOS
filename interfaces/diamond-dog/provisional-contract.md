@@ -5,7 +5,7 @@ SPDX-License-Identifier: MIT
 
 # Diamond Dog provisional contract v0.1
 
-Revision 2026-10-21, second round. Surfaces 1, 4, 6, 9 and 10 are at 0.3; surfaces 2, 3, 7 and 8 at 0.2; surface 5 at 0.1. The working copy lives in the Diamond Dog project files; this file is the one Orca Keel pins.
+Revision 2026-10-21, third pass. Surfaces 1, 2, 3, 4, 6, 9 and 10 are at 0.3; surfaces 7 and 8 at 0.2; surface 5 at 0.1. The working copy lives in the Diamond Dog project files; this file is the one Orca Keel pins.
 
 ## Status
 
@@ -15,7 +15,7 @@ What it rests on: the Glossary and Decision log (the words and rules), and the S
 
 The contract is written in Diamond Dog's words. Where Orca Keel uses a word the Glossary avoids (permission, sandbox), this document uses the Diamond Dog word and says which. The draft is MIT once it lands in the repo's `interfaces/` folder, so Orca Keel can implement it under any license.
 
-Revised twice the same day. First with Orca Keel's answers to the first draft and The week's gaps (G-1 to G-4). Then with the gaps the Subscriptions, Lists, Upkeep and Kids and school threads found (G-5 to G-16), which closed Orca Keel's list: nothing was outstanding from the five threads at 20:25 UTC. Surfaces 1, 4, 6, 9 and 10 are at 0.3; surfaces 2, 3, 7 and 8 at 0.2; surface 5 stays at 0.1. Each gap's answer sits under its surface, marked with its id. Orca Keel builds against this contract and supplies the eight tests' expected ledgers as fixtures.
+Revised twice the same day. First with Orca Keel's answers to the first draft and The week's gaps (G-1 to G-4). Then with the gaps the Subscriptions, Lists, Upkeep and Kids and school threads found (G-5 to G-16), which closed Orca Keel's list: nothing was outstanding from the five threads at 20:25 UTC. A third pass the same evening answered the fake's reading of the contract: an activity's audience defaults to its principal alone, every activity draws child grants from its app's install grants, and a timed-out activity closes on its own. Surfaces 1, 2, 3, 4, 6, 9 and 10 are at 0.3; surfaces 7 and 8 at 0.2; surface 5 stays at 0.1. Each gap's answer sits under its surface, marked with its id. Orca Keel builds against this contract and supplies the eight tests' expected ledgers as fixtures.
 
 ## Same shapes, two vocabularies
 
@@ -81,32 +81,32 @@ An app is installed with a manifest, and the manifest is the ceiling on everythi
 | Switch on, switch off | App id, a member | Off: no process, no egress, no live grants; pending proposals withdrawn with a ledger line. Standing grants, including install grants (surface 3), are held, not live, and are shown again for confirmation when the app is switched on. A manifest flag (`off_revokes`) makes off revoke them instead, for an app that wants "off means off" literally | An add-on: the member is not an adult member. Daybook: the member is not the owner |
 | Uninstall | App id, a member | Grants revoked, records kept under their audience, journal kept | The member is not the owner |
 
-### 2. Activities (DD-6) · stable · v0.2
+### 2. Activities (DD-6) · stable · v0.3
 
 A routine runs as an activity. The six states are Created, Running, Waiting, Suspended, Closing, Closed, and these are the only transitions: Created to Running when inputs and grants are chosen; Running to Waiting on an approval, a reconciliation or a human step, and back when answered; Running to Suspended when a revocation removes authority it needs, back to Running on a new grant; any state to Closing on cancel or finish; Closing to Closed once temporary grants have expired and outputs are promoted or released. Daybook's states map onto these one to one.
 
 | Call | Takes | Gives back | Refused when |
 | --- | --- | --- | --- |
-| Open | App, routine, principal (the member the activity acts for), the record or matter as context, audience (which members may read it and be notified), optional parent activity, approval policy | Activity id in Created | The app is off; the routine is not in the manifest; the principal is not a member who may use the app; another activity holds the same concurrency key |
+| Open | App, routine, principal (the member the activity acts for), the record or matter as context, audience (which members may read it and be notified; the principal alone when the app names none), optional parent activity, approval policy | Activity id in Created | The app is off; the routine is not in the manifest; the principal is not a member who may use the app; another activity holds the same concurrency key |
 | Read state | Activity id | State, open proposals, live grants, cost used against allowance | Caller is outside the activity's audience |
 | Watch (G-13) | App; its activities or named ones; the states to report, at least Closed | A stream of state-change events, each the journal entry that caused it, so an app linked to a matter learns it closed without polling | Caller is outside the activity's audience |
 | Cancel | Activity id, a member or the app | Closing: participants asked to stop; receipts kept; unknown outcomes not waited on | Already Closing or Closed |
 | Close | Activity id | Closed; receipts remain; an outcome still unknown stays tracked under the closed activity | Temporary grants still live |
 
-Limits travel with the activity: timeout (then Closing), retry rule (declared idempotent operations only), concurrency key (one open activity per key per app), cost allowance (drawn from the app's allowance, section 10). A child activity holds a subset of its parent's authority and closes no later than it.
+Limits travel with the activity: timeout (then Closing, and Closed on its own once its temporary grants have expired, with no Close call from the app), retry rule (declared idempotent operations only), concurrency key (one open activity per key per app), cost allowance (drawn from the app's allowance, section 10). A child activity holds a subset of its parent's authority and closes no later than it.
 
 Who an activity acts for (G-7): any member may be the principal of an add-on's activity, and an add-on activity's audience may include members who are not the owner. Kids and school opens one reminders activity per guardian per evening, each with that guardian as principal; Lists tells a non-owner member the groceries are ready because that member is in the audience. Orca Keel's decision A-9 made Daybook owner-only; it says nothing about add-ons. One principal per activity still holds; several people on one activity is the audience, not shared authority, and stays out (section 7).
 
 One app may open another app's routine (Lists' gap, folded into G-3) when both manifests declare it: the caller lists the target app and routine under `opens`, the target lists the caller under `opened by`. The new activity's principal is the member acting, and the context record passes by id under the target's read scope. This is the pilot's handoff stand-in.
 
-### 3. Grants and connections (DD-2, DD-4) · stable · v0.2
+### 3. Grants and connections (DD-2, DD-4) · stable · v0.3
 
 A grant names the object, the operation, the recipient, the duration and the principal. A connection handle is an adapter the household set up in the shell; the app refers to it by handle and never sees the credential.
 
 | Call | Takes | Gives back | Refused when |
 | --- | --- | --- | --- |
 | Grant | Activity (holder), operation, object or handle, principal, expiry; standing or one-time; for one-time, the hash of the work state it is bound to (the draft, the record version, the recipient) | Grant id | Operation not in the manifest; the principal may not grant it; expiry beyond the activity's |
-| Install grant (G-6) | App install (holder), an operation the manifest declares as standing, object or handle, the granting member | A standing grant that outlives any one activity: it lasts until the member revokes it at the app or the app is switched off (then held, surface 1). Each scheduled activity the app opens draws a child grant from it, bounded by it and expiring with that activity | Operation not declared standing in the manifest; the member may not grant it |
+| Install grant (G-6) | App install (holder), an operation the manifest declares as standing, object or handle, the granting member | A standing grant that outlives any one activity: it lasts until the member revokes it at the app or the app is switched off (then held, surface 1). Each activity the app opens, scheduled or not, draws a child grant from it, bounded by it and expiring with that activity; an activity uses only the grants it holds | Operation not declared standing in the manifest; the member may not grant it |
 | Revoke | Grant id, a principal | The grant and everything delegated from it stops conferring authority for future actions; an activity that needed it goes Suspended | Never; revocation always lands |
 | List grants | App, activity or handle | Live grants with holder, object, expiry, principal | Caller outside the audience |
 | Use (read) | Grant id, operation, object | The read proceeds on the grant alone | Grant expired, revoked, or object outside it |
@@ -126,7 +126,7 @@ A proposal has no power. Only the shell on a member's paired device shows it, an
 | Read policy | Activity | Which operations need a fresh approval and which members may give it. A rule names an operation, optionally the audience of the record in context, and the approvers: named members, a role, or "the record's audience" (G-15), so "only Maya's guardians may approve a calendar write for Maya" can be said | — |
 | List pending (G-4) | Member | Proposals waiting on that member across apps, each with its app, activity and age, so a routine can say "three things are waiting on you" | Caller is neither that member nor a routine with that member in its read scope |
 
-The app never draws the approval screen. What the member sees is what gets bound; a changed draft voids the approval.
+The app never draws the approval screen. What the member sees is what gets bound; a changed draft voids the approval. Where the policy calls for an approval, the approval alone mints the authorization; no grant is needed beside it, and the manifest is still the ceiling.
 
 A routine may propose on a matter its app did not open (the handoff stand-in for DD-14) under three conditions: the matter is in the proposing app's audience; the operation is in the proposer's manifest; the proposal and its receipt name both apps, and the approval path shows the proposer's name.
 
