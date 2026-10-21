@@ -6,7 +6,7 @@ Jason decided Diamond Dog builds a fake runtime for Orca Keel to build against, 
 
 Verification: `cargo test` in `fake/` runs the nine reference fixtures, four regression fixtures covering the other refusals and G-17's declared query parameters, runner self-checks (a wrong code, a missing or out-of-order ledger line and a forbidden line each fail), and clock-change unit tests; all pass, and `cargo clippy --all-targets` is clean. An HTTP smoke test (install, switch on, open, a refused act, a malformed body, `/fake/check`) answered as documented. `reuse lint` passes. Not proven, by design: isolation, durability, identity, spoof-proof approval.
 
-Open: Orca Keel's own eight fixtures replace the reference ones as the gate; no CI job runs `cargo test` yet (a CI change needs Jason's go-ahead). The contract it implements is on main since PR #6 merged.
+Open: Orca Keel's own eight fixtures replace the reference ones as the gate; Jason approved a CI job for the fake (2026-10-21): `.github/workflows/fake.yml` runs `cargo test` and `cargo clippy` whenever `fake/` or `examples/diamond-dog-fake/` changes. The contract it implements is on main since PR #6 merged.
 
 ## October 21, 2026 — Provisional contract for products on top of the runtime
 
