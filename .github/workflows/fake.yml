@@ -1,0 +1,37 @@
+# Runs the fake Diamond Dog's tests: the reference fixtures for the eight
+# gating tests, the regression fixtures and the unit tests. See fake/README.md.
+name: Fake Diamond Dog
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "fake/**"
+      - "examples/diamond-dog-fake/**"
+      - ".github/workflows/fake.yml"
+  pull_request:
+    paths:
+      - "fake/**"
+      - "examples/diamond-dog-fake/**"
+      - ".github/workflows/fake.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fake
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy && rustup default stable
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Lint
+        run: cargo clippy --locked --all-targets -- -D warnings
