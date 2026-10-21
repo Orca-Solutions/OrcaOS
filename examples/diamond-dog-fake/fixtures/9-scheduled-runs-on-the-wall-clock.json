@@ -68,8 +68,8 @@
           "kind": "core",
           "surfaces": {
             "install": "0.3",
-            "activities": "0.2",
-            "grants": "0.2",
+            "activities": "0.3",
+            "grants": "0.3",
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
@@ -217,6 +217,13 @@
       "detail": {
         "to": "closing",
         "why": "it reached its timeout"
+      },
+      "at": "2027-03-13T08:00:00Z"
+    },
+    {
+      "kind": "activity",
+      "detail": {
+        "to": "closed"
       },
       "at": "2027-03-13T08:00:00Z"
     },

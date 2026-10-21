@@ -14,8 +14,8 @@ use serde_json::Value;
 /// a minor bump only adds.
 pub const SURFACES: [(&str, &str); 10] = [
     ("install", "0.3"),
-    ("activities", "0.2"),
-    ("grants", "0.2"),
+    ("activities", "0.3"),
+    ("grants", "0.3"),
     ("proposals", "0.3"),
     ("ledger", "0.1"),
     ("records", "0.3"),

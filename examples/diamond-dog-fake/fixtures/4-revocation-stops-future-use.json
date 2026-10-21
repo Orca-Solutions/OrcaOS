@@ -76,8 +76,8 @@
           "kind": "core",
           "surfaces": {
             "install": "0.3",
-            "activities": "0.2",
-            "grants": "0.2",
+            "activities": "0.3",
+            "grants": "0.3",
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
@@ -175,7 +175,7 @@
       }
     },
     {
-      "call": "activities/v0.2/open",
+      "call": "activities/v0.3/open",
       "body": {
         "caller": {
           "app": "daybook",
@@ -188,7 +188,7 @@
       }
     },
     {
-      "call": "grants/v0.2/use",
+      "call": "grants/v0.3/use",
       "body": {
         "caller": {
           "routine": "${a1}"
@@ -198,7 +198,7 @@
       }
     },
     {
-      "call": "grants/v0.2/revoke",
+      "call": "grants/v0.3/revoke",
       "body": {
         "caller": {
           "shell": "dana",
@@ -208,7 +208,7 @@
       }
     },
     {
-      "call": "grants/v0.2/use",
+      "call": "grants/v0.3/use",
       "body": {
         "caller": {
           "routine": "${a1}"
@@ -221,7 +221,7 @@
       }
     },
     {
-      "call": "activities/v0.2/read_state",
+      "call": "activities/v0.3/read_state",
       "body": {
         "caller": {
           "shell": "dana",

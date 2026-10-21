@@ -88,7 +88,8 @@ impl Fake {
             return Err(refuse("principal_may_not_use_app", format!("{name} acts only for the owner")).app(app_id).member(principal).into());
         }
 
-        let mut audience = audience.unwrap_or_else(|| self.household.members.iter().map(|m| m.id.clone()).collect());
+        // A default never widens who sees work: the principal alone, unless the app names more.
+        let mut audience = audience.unwrap_or_default();
         if let Some(unknown) = audience.iter().find(|m| self.household.member(m).is_none()) {
             return Err(bad(format!("{unknown} in the audience is not a member of the household")));
         }

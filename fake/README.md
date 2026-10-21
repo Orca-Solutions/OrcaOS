@@ -50,14 +50,17 @@ The outside systems (mail, calendar, web hosts, model providers, a printer) are 
 
 ## Where the fake reads the contract
 
-The contract leaves some choices open; the fake makes these, and the contract thread can overrule any of them.
+The contract thread confirmed or settled each of these on 2026-10-21 (contract commit c09c154); they are now in the contract itself:
 
-- **An activity's audience** defaults to the whole household when `open` names none, and always includes its principal.
-- **Install grants** are drawn on by every activity of the app, not only scheduled ones: each activity gets a child grant per live install grant, expiring with it. An activity uses only the grants it holds.
-- **Approval alone** mints the authorization for an operation the policy marks; no grant is needed beside it.
-- **The catch-up window** may be set up to the cadence in the manifest (the contract says the manifest "may shorten it, never lengthen it past the cadence"); a schedule may shorten it further, never lengthen it past the manifest's.
-- **Timeouts** move an activity to Closing, as the contract says; it reaches Closed when someone calls `close`.
+- **An activity's audience** is the principal alone when `open` names none.
+- **Install grants** are drawn on by every activity of the app, scheduled or not: each activity gets a child grant per live install grant, expiring with it. An activity uses only the grants it holds.
+- **Approval alone** mints the authorization for an operation the policy marks; no grant is needed beside it, and the manifest is still the ceiling.
+- **The catch-up window** may be set up to the cadence in the manifest; a schedule may only shorten it.
+- **Timeouts** move an activity to Closing and then, once its temporary grants have ended, to Closed on its own.
 - **Disclosure categories** are what the routine names plus what the sent records' types carry. The fake does not read free text.
+- **Revoke** is open to members through the shell and to an app giving up its own grants; other callers are refused and journaled.
+
+Readings the contract leaves to the binding, not the contract:
+
 - **Malformed requests** (bad JSON, a missing field, an unknown id) get a 400 error and are not journaled; refusals get a 403 and always are.
-- **Revoke** is open to members through the shell and to an app giving up its own grants.
 - **Support sessions** are recorded as time-boxed grants for `ledger.read` and `records.read`; the fake runs no session.

@@ -66,8 +66,8 @@
           "version": "0.1.0",
           "surfaces": {
             "install": "0.3",
-            "activities": "0.2",
-            "grants": "0.2",
+            "activities": "0.3",
+            "grants": "0.3",
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
@@ -117,8 +117,8 @@
           "version": "0.1.0",
           "surfaces": {
             "install": "0.3",
-            "activities": "0.2",
-            "grants": "0.2",
+            "activities": "0.3",
+            "grants": "0.3",
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
@@ -287,7 +287,7 @@
       }
     },
     {
-      "call": "activities/v0.2/open",
+      "call": "activities/v0.3/open",
       "body": {
         "caller": {
           "app": "lists",

@@ -68,8 +68,8 @@
           "kind": "add_on",
           "surfaces": {
             "install": "0.3",
-            "activities": "0.2",
-            "grants": "0.2",
+            "activities": "0.3",
+            "grants": "0.3",
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",

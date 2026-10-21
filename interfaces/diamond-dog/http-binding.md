@@ -5,7 +5,7 @@ SPDX-License-Identifier: MIT
 
 # Diamond Dog provisional contract over HTTP
 
-Revision 2026-10-21. The HTTP binding the fake Diamond Dog (`fake/` in this repository) answers today. It carries the surfaces of the [provisional contract](provisional-contract.md) at the versions that contract names on 2026-10-21, second round: surfaces 1, 4, 6, 9 and 10 at 0.3; 2, 3, 7 and 8 at 0.2; 5 at 0.1. The contract decides what each call means and when it is refused; this file decides only how a call travels. Where the two disagree, the contract wins and this file is wrong.
+Revision 2026-10-21. The HTTP binding the fake Diamond Dog (`fake/` in this repository) answers today. It carries the surfaces of the [provisional contract](provisional-contract.md) at the versions that contract names on 2026-10-21, third pass: surfaces 1, 2, 3, 4, 6, 9 and 10 at 0.3; 7 and 8 at 0.2; 5 at 0.1. The contract decides what each call means and when it is refused; this file decides only how a call travels. Where the two disagree, the contract wins and this file is wrong.
 
 The real runtime may bind the contract differently. Code that keeps its HTTP calls behind one small client module will swap with a version bump and a new client, not a rewrite.
 
@@ -57,7 +57,7 @@ Keeping a record inside the household is not an operation (G-5); it is surface 6
 {
   "app": "daybook", "name": "Daybook", "version": "0.1.0",
   "kind": "core",
-  "surfaces": { "install": "0.3", "ledger": "0.1" },
+  "surfaces": { "install": "0.3", "activities": "0.3", "ledger": "0.1" },
   "record_types": [ { "name": "health_note", "categories": ["health"] } ],
   "routines": [
     { "name": "morning", "trigger": "schedule", "timeout_minutes": 30,
@@ -93,7 +93,7 @@ Fields in brackets are optional. "Routine" means the call is made as `{"routine"
 | `uninstall` | shell (owner); `app` | Grants revoked; records and ledger kept |
 | `read_app` | any; [`app`] | Manifest, on, paused, who switched it on, allowance |
 
-### activities (0.2)
+### activities (0.3)
 
 | Call | Body | Result |
 | --- | --- | --- |
@@ -103,9 +103,9 @@ Fields in brackets are optional. "Routine" means the call is made as `{"routine"
 | `close` | `activity` | Closed; `unknown_outcomes_still_tracked` |
 | `watch` | [`app`]; [`activities`]; [`states`, default `["closed"]`]; [`after`: ledger line] | `events` (the journal entries that changed state), `cursor` |
 
-`principal` defaults to the caller's member; `audience` defaults to the whole household and always includes the principal. A routine that opens an activity of its own app opens a child. Every new activity draws a child grant from each live install grant of its app, expiring with it. `watch` answers at once with what happened after `after`; pass back `cursor` next time.
+`principal` defaults to the caller's member; `audience` defaults to the principal alone, since a default never widens who sees work, and always includes the principal. A timed-out activity goes to Closing and then Closed on its own. A routine that opens an activity of its own app opens a child. Every new activity draws a child grant from each live install grant of its app, expiring with it. `watch` answers at once with what happened after `after`; pass back `cursor` next time.
 
-### grants (0.2)
+### grants (0.3)
 
 | Call | Body | Result |
 | --- | --- | --- |

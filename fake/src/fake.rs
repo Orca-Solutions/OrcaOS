@@ -911,8 +911,11 @@ impl Fake {
             .filter(|a| !a.state.is_ending() && a.deadline <= now)
             .map(|a| a.id.clone())
             .collect();
+        // A timed-out activity closes on its own: entering Closing ends its
+        // temporary grants, so it goes on to Closed with no call from the app.
         for id in late {
             self.enter_closing(&id, "it reached its timeout", Source::service("supervisor"));
+            self.set_state(&id, ActivityState::Closed, "it timed out and its temporary grants have ended", Source::service("supervisor"));
         }
     }
 }
