@@ -5,7 +5,7 @@ SPDX-License-Identifier: MIT
 
 # Diamond Dog provisional contract v0.1
 
-Revision 2026-10-21, third pass. Surfaces 1, 2, 3, 4, 6, 9 and 10 are at 0.3; surfaces 7 and 8 at 0.2; surface 5 at 0.1. The working copy lives in the Diamond Dog project files; this file is the one Orca Keel pins.
+Revision 2026-10-21, fourth pass. Surfaces 1, 2, 3, 4, 6, 7, 9 and 10 are at 0.3; surface 8 at 0.2; surface 5 at 0.1. The working copy lives in the Diamond Dog project files; this file is the one Orca Keel pins.
 
 ## Status
 
@@ -15,7 +15,7 @@ What it rests on: the Glossary and Decision log (the words and rules), and the S
 
 The contract is written in Diamond Dog's words. Where Orca Keel uses a word the Glossary avoids (permission, sandbox), this document uses the Diamond Dog word and says which. The draft is MIT once it lands in the repo's `interfaces/` folder, so Orca Keel can implement it under any license.
 
-Revised twice the same day. First with Orca Keel's answers to the first draft and The week's gaps (G-1 to G-4). Then with the gaps the Subscriptions, Lists, Upkeep and Kids and school threads found (G-5 to G-16), which closed Orca Keel's list: nothing was outstanding from the five threads at 20:25 UTC. A third pass the same evening answered the fake's reading of the contract: an activity's audience defaults to its principal alone, every activity draws child grants from its app's install grants, and a timed-out activity closes on its own. Surfaces 1, 2, 3, 4, 6, 9 and 10 are at 0.3; surfaces 7 and 8 at 0.2; surface 5 stays at 0.1. Each gap's answer sits under its surface, marked with its id. Orca Keel builds against this contract and supplies the eight tests' expected ledgers as fixtures.
+Revised twice the same day. First with Orca Keel's answers to the first draft and The week's gaps (G-1 to G-4). Then with the gaps the Subscriptions, Lists, Upkeep and Kids and school threads found (G-5 to G-16), which closed Orca Keel's list: nothing was outstanding from the five threads at 20:25 UTC. A third pass the same evening answered the fake's reading of the contract: an activity's audience defaults to its principal alone, every activity draws child grants from its app's install grants, and a timed-out activity closes on its own. G-17, Upkeep's API fetch, followed. Surfaces 1, 2, 3, 4, 6, 7, 9 and 10 are at 0.3; surface 8 at 0.2; surface 5 stays at 0.1. Each gap's answer sits under its surface, marked with its id. Orca Keel builds against this contract and supplies the eight tests' expected ledgers as fixtures.
 
 ## Same shapes, two vocabularies
 
@@ -170,18 +170,20 @@ The writer's own audience (G-5, second half) means the members the writer's prin
 
 Audience follows the record into every copy (G-10): a phone's cache, an export, an app's own store. The shell enforces it on the devices it controls. Where the app holds the copy, the app enforces it, and this contract says so: an app that shows a restricted record outside its audience has broken the contract, whatever the runtime did.
 
-### 7. Egress and disclosure (DD-7) · stable · v0.2
+### 7. Egress and disclosure (DD-7) · stable · v0.3
 
 Every byte that leaves goes through an adapter under a grant, and every disclosure is journaled with what went where.
 
 | Call | Takes | Gives back | Refused when |
 | --- | --- | --- | --- |
-| Fetch | Activity, named host, path | The page, through the bounded browser adapter | No grant on that host; a redirect off the host |
+| Fetch | Activity, named host, path; for a page, through the bounded browser; for an API (G-17), the query parameters the manifest declares for that host | A page, rendered by the bounded browser; or the raw body with its content type, through the fetch adapter. The same host-scoped grant either way | No grant on that host; a redirect off the host; a query parameter the manifest did not declare, refused and journaled like an undeclared operation |
 | Disclose to a provider | Activity, provider (from the manifest), categories of content | A per-activity conversation with the provider, memory off; a receipt naming provider, categories and grant | A category outside the disclosure grant (health, children and money are out unless a member loosened them for this matter); a locked category (below); a provider whose memory spans activities |
 | LAN target | Activity, named target (a printer) | The job, through that target's adapter | No grant on that target |
 | Lock category (G-16) | Household, the owner, a disclosure category | The category can no longer be loosened for any matter by any member; locking and unlocking are journaled | The member is not the owner |
 
 A locked category is a household setting, not a per-matter choice, so a child's restricted records can be kept out of every provider by one decision. Until the pilot sets one, Kids and school declares `providers: []`, which the manifest ceiling already enforces for that app.
+
+An API fetch (G-17) is how Upkeep asks a public recalls service by year, make and model. The manifest lists the parameters the app may send to that host, so "never the VIN" is something the enforcement check refuses rather than a promise in a spec: an undeclared parameter is refused and journaled, the same as an undeclared operation.
 
 ### 8. Members and devices (DD-3, DD-17) · v0.2
 
@@ -284,7 +286,7 @@ Answered by Orca Keel on 2026-10-21 and folded into the surfaces above:
 - [x] The receipt word the shell shows is Acknowledged; the brand book's "Accepted" is for the brand thread to reconcile.
 - [x] G-1 clock changes and G-2 whose authority a scheduled run acts on (surface 9); G-3 cross-app reads (surface 6); G-4 a member's pending approvals (surface 4). G-2 differs from Orca Keel's preferred answer; the reason is under surface 9.
 - [x] Who builds the fake: Diamond Dog builds it, in its own thread, and Orca Keel writes and runs the eight tests' fixtures, so one side owns every refusal. Decided by jason on 2026-10-21.
-- [x] G-5 to G-16 from Subscriptions, Lists, Upkeep and Kids and school, each answered under its surface: promotion inside the house is not consequential and the writer's audience is defined (6); install grants for scheduled runs (3, 9); any member as an add-on activity's principal (2, 8); Contribute and Wipe (10); Delete, the client key, read receipts and audience on copies (6); Watch (2); guardian relations (8); approval policy by the record's audience (4); locked categories (7); the memberless device waits (section 7). Orca Keel's settled items (uninstall, handoffs, Daybook's intake category) asked for no change.
+- [x] G-5 to G-16 from Subscriptions, Lists, Upkeep and Kids and school, each answered under its surface: promotion inside the house is not consequential and the writer's audience is defined (6); install grants for scheduled runs (3, 9); any member as an add-on activity's principal (2, 8); Contribute and Wipe (10); Delete, the client key, read receipts and audience on copies (6); Watch (2); guardian relations (8); approval policy by the record's audience (4); locked categories (7); the memberless device waits (section 7). Orca Keel's settled items (uninstall, handoffs, Daybook's intake category) asked for no change. G-17, Upkeep's API fetch, came last and is answered under surface 7.
 
 Still open for jason:
 
