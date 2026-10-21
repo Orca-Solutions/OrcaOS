@@ -1,0 +1,273 @@
+{
+  "name": "A manifest that revokes on switch-off, and one app opening another's routine",
+  "setup": {
+    "now": "2026-11-02T14:00:00Z",
+    "household": {
+      "zone": "America/New_York",
+      "members": [
+        {
+          "id": "dana",
+          "name": "Dana",
+          "role": "owner",
+          "may_approve": [
+            "*"
+          ],
+          "devices": [
+            "dana-phone"
+          ]
+        },
+        {
+          "id": "sam",
+          "name": "Sam",
+          "role": "adult",
+          "may_approve": [
+            "mail.send",
+            "calendar.write"
+          ],
+          "devices": [
+            "sam-phone"
+          ]
+        },
+        {
+          "id": "maya",
+          "name": "Maya",
+          "role": "child"
+        }
+      ],
+      "guardians": {
+        "maya": [
+          "dana"
+        ]
+      }
+    },
+    "connections": [
+      {
+        "handle": "household-mail",
+        "kind": "mail",
+        "account": "family@example.test"
+      },
+      {
+        "handle": "claude",
+        "kind": "provider"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "lists",
+          "name": "Lists",
+          "version": "0.1.0",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.2",
+            "grants": "0.2",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.2",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "item"
+            }
+          ],
+          "routines": [
+            {
+              "name": "groceries",
+              "concurrency_key": "groceries"
+            }
+          ],
+          "operations": [
+            {
+              "operation": "mail.read",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "standing"
+            }
+          ],
+          "notifications": {
+            "kinds": [
+              "ready"
+            ],
+            "per_day": 1
+          },
+          "off_revokes": true,
+          "opened_by": [
+            "the-week"
+          ]
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "the-week",
+          "name": "The week",
+          "version": "0.1.0",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.2",
+            "grants": "0.2",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.2",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "week_note"
+            }
+          ],
+          "routines": [
+            {
+              "name": "sunday",
+              "trigger": "schedule"
+            }
+          ],
+          "operations": [],
+          "read_scopes": [
+            {
+              "app": "lists",
+              "record_types": [
+                "item"
+              ]
+            }
+          ],
+          "opens": [
+            {
+              "app": "lists",
+              "routine": "groceries"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "app": "lists",
+        "standing_grants": [
+          {
+            "operation": "mail.read",
+            "object": "mail:household-mail"
+          }
+        ]
+      },
+      "save": {
+        "g": "grants.0"
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "app": "the-week"
+      }
+    },
+    {
+      "call": "activities/v0.2/open",
+      "body": {
+        "caller": {
+          "app": "the-week",
+          "member": "dana"
+        },
+        "app": "lists",
+        "routine": "groceries"
+      },
+      "save": {
+        "a1": "activity"
+      }
+    },
+    {
+      "call": "activities/v0.2/open",
+      "body": {
+        "caller": {
+          "app": "the-week",
+          "member": "dana"
+        },
+        "app": "lists",
+        "routine": "other"
+      },
+      "expect": {
+        "refused": "routine_not_in_manifest"
+      }
+    },
+    {
+      "call": "install/v0.3/switch_off",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "app": "lists"
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "app": "lists"
+      },
+      "expect": {
+        "ok": {
+          "held_for_confirmation": []
+        }
+      }
+    }
+  ],
+  "expect_ledger": [
+    {
+      "kind": "activity",
+      "activity": "${a1}",
+      "member": "dana",
+      "source": {
+        "kind": "participant",
+        "id": "app:the-week"
+      }
+    },
+    {
+      "kind": "activity",
+      "activity": "${a1}",
+      "detail": {
+        "to": "closed"
+      }
+    },
+    {
+      "kind": "revocation",
+      "grant": "${g}"
+    }
+  ],
+  "forbid_ledger": [
+    {
+      "kind": "grant_held"
+    }
+  ]
+}

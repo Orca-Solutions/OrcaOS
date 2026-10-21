@@ -1,0 +1,217 @@
+{
+  "name": "Audience enforced on read",
+  "about": "A child's record restricted to its guardians. A non-guardian member's read is refused, and the guardian's own read is journaled where the guardians can see it.",
+  "setup": {
+    "now": "2026-11-02T14:00:00Z",
+    "household": {
+      "zone": "America/New_York",
+      "members": [
+        {
+          "id": "dana",
+          "name": "Dana",
+          "role": "owner",
+          "may_approve": [
+            "*"
+          ],
+          "devices": [
+            "dana-phone"
+          ]
+        },
+        {
+          "id": "sam",
+          "name": "Sam",
+          "role": "adult",
+          "may_approve": [
+            "mail.send",
+            "calendar.write"
+          ],
+          "devices": [
+            "sam-phone"
+          ]
+        },
+        {
+          "id": "maya",
+          "name": "Maya",
+          "role": "child"
+        }
+      ],
+      "guardians": {
+        "maya": [
+          "dana"
+        ]
+      }
+    },
+    "connections": [
+      {
+        "handle": "household-mail",
+        "kind": "mail",
+        "account": "family@example.test"
+      },
+      {
+        "handle": "claude",
+        "kind": "provider"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "kids-school",
+          "name": "Kids and school",
+          "version": "0.1.0",
+          "kind": "add_on",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.2",
+            "grants": "0.2",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.2",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "school_note",
+              "categories": [
+                "children"
+              ]
+            }
+          ],
+          "routines": [
+            {
+              "name": "intake",
+              "timeout_minutes": 30
+            }
+          ],
+          "operations": [],
+          "providers": []
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "app": "kids-school"
+      }
+    },
+    {
+      "call": "records/v0.3/write",
+      "body": {
+        "caller": {
+          "app": "kids-school",
+          "member": "dana"
+        },
+        "type": "school_note",
+        "content": {
+          "text": "Maya's reading assessment is on Thursday."
+        },
+        "provenance": {
+          "source": "external",
+          "relayed_by": "mail adapter (household-mail)",
+          "trust": "untrusted"
+        },
+        "audience": {
+          "guardians_of": "maya"
+        }
+      },
+      "save": {
+        "note": "object"
+      }
+    },
+    {
+      "call": "records/v0.3/read",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "object": "${note}"
+      },
+      "expect": {
+        "refused": "outside_audience"
+      }
+    },
+    {
+      "call": "records/v0.3/read",
+      "body": {
+        "caller": {
+          "app": "kids-school",
+          "member": "sam"
+        },
+        "object": "${note}"
+      },
+      "expect": {
+        "refused": "outside_audience"
+      }
+    },
+    {
+      "call": "records/v0.3/read",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "object": "${note}"
+      },
+      "expect": {
+        "ok": {
+          "records": [
+            {
+              "content": {
+                "text": "Maya's reading assessment is on Thursday."
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect_ledger": [
+    {
+      "kind": "record",
+      "object": "record:${note}",
+      "detail": {
+        "audience": {
+          "guardians_of": "maya"
+        }
+      }
+    },
+    {
+      "kind": "refusal",
+      "member": "sam",
+      "object": "record:${note}",
+      "reason": {
+        "code": "outside_audience"
+      }
+    },
+    {
+      "kind": "refusal",
+      "member": "sam",
+      "app": "kids-school",
+      "reason": {
+        "code": "outside_audience"
+      }
+    },
+    {
+      "kind": "record_read",
+      "member": "dana",
+      "object": "record:${note}",
+      "visible_to": [
+        "dana"
+      ]
+    }
+  ]
+}

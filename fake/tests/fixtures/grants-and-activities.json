@@ -1,0 +1,494 @@
+{
+  "name": "Grants, activities and the one-time grant bound to work state",
+  "setup": {
+    "now": "2026-11-02T14:00:00Z",
+    "household": {
+      "zone": "America/New_York",
+      "members": [
+        {
+          "id": "dana",
+          "name": "Dana",
+          "role": "owner",
+          "may_approve": [
+            "*"
+          ],
+          "devices": [
+            "dana-phone"
+          ]
+        },
+        {
+          "id": "sam",
+          "name": "Sam",
+          "role": "adult",
+          "may_approve": [
+            "mail.send",
+            "calendar.write"
+          ],
+          "devices": [
+            "sam-phone"
+          ]
+        },
+        {
+          "id": "maya",
+          "name": "Maya",
+          "role": "child"
+        }
+      ],
+      "guardians": {
+        "maya": [
+          "dana"
+        ]
+      }
+    },
+    "connections": [
+      {
+        "handle": "household-mail",
+        "kind": "mail",
+        "account": "family@example.test"
+      },
+      {
+        "handle": "claude",
+        "kind": "provider"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "daybook",
+          "name": "Daybook",
+          "version": "0.1.0",
+          "kind": "core",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.2",
+            "grants": "0.2",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.2",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "note"
+            },
+            {
+              "name": "mail_item"
+            },
+            {
+              "name": "health_note",
+              "categories": [
+                "health"
+              ]
+            }
+          ],
+          "routines": [
+            {
+              "name": "intake",
+              "timeout_minutes": 30
+            },
+            {
+              "name": "reply",
+              "timeout_minutes": 60
+            },
+            {
+              "name": "morning",
+              "trigger": "schedule",
+              "concurrency_key": "morning",
+              "timeout_minutes": 30
+            }
+          ],
+          "operations": [
+            {
+              "operation": "mail.read",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "standing"
+            },
+            {
+              "operation": "mail.send",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "standing",
+              "approval": "required"
+            },
+            {
+              "operation": "provider.disclose",
+              "adapter": "provider",
+              "object": "provider:claude",
+              "grant": "standing"
+            }
+          ],
+          "providers": [
+            {
+              "name": "claude"
+            }
+          ],
+          "disclosure_categories": [
+            "general",
+            "health"
+          ],
+          "notifications": {
+            "kinds": [
+              "digest"
+            ],
+            "per_day": 3
+          }
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "lists",
+          "name": "Lists",
+          "version": "0.1.0",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.2",
+            "grants": "0.2",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.2",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "item"
+            }
+          ],
+          "routines": [
+            {
+              "name": "groceries",
+              "concurrency_key": "groceries"
+            }
+          ],
+          "operations": [
+            {
+              "operation": "mail.send",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "one_time"
+            }
+          ],
+          "notifications": {
+            "kinds": [
+              "ready"
+            ],
+            "per_day": 1
+          }
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "app": "daybook"
+      },
+      "expect": {
+        "refused": "not_owner"
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "maya"
+        },
+        "app": "lists"
+      },
+      "expect": {
+        "refused": "not_adult"
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "app": "lists"
+      }
+    },
+    {
+      "call": "activities/v0.2/open",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        },
+        "routine": "groceries",
+        "audience": [
+          "sam"
+        ]
+      },
+      "save": {
+        "a1": "activity"
+      }
+    },
+    {
+      "call": "activities/v0.2/open",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        },
+        "routine": "groceries"
+      },
+      "expect": {
+        "refused": "concurrency_key_held"
+      }
+    },
+    {
+      "call": "activities/v0.2/open",
+      "body": {
+        "caller": {
+          "app": "daybook",
+          "member": "sam"
+        },
+        "routine": "intake"
+      },
+      "expect": {
+        "refused": "app_off"
+      }
+    },
+    {
+      "call": "grants/v0.2/grant",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "holder": {
+          "activity": "${a1}"
+        },
+        "operation": "mail.send",
+        "object": "mail:household-mail",
+        "kind": "one_time"
+      },
+      "expect": {
+        "refused": "work_state_missing"
+      }
+    },
+    {
+      "call": "grants/v0.2/grant",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "holder": {
+          "activity": "${a1}"
+        },
+        "operation": "mail.send",
+        "object": "mail:household-mail",
+        "kind": "one_time",
+        "bound_to": {
+          "to": "sam@example.test",
+          "body": "Milk, eggs"
+        }
+      },
+      "save": {
+        "g1": "grant"
+      }
+    },
+    {
+      "call": "activities/v0.2/close",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        },
+        "activity": "${a1}"
+      },
+      "expect": {
+        "refused": "temporary_grants_live"
+      }
+    },
+    {
+      "call": "ledger/v0.1/act",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "operation": "mail.send",
+        "object": "mail:household-mail",
+        "payload": {
+          "to": "sam@example.test",
+          "body": "Milk, eggs, bread"
+        }
+      },
+      "expect": {
+        "refused": "work_state_changed"
+      }
+    },
+    {
+      "call": "ledger/v0.1/act",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "operation": "mail.send",
+        "object": "mail:household-mail",
+        "payload": {
+          "to": "sam@example.test",
+          "body": "Milk, eggs"
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": {
+            "state": "acknowledged"
+          },
+          "authority": {
+            "grant": "${g1}"
+          }
+        }
+      }
+    },
+    {
+      "call": "ledger/v0.1/act",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "operation": "mail.send",
+        "object": "mail:household-mail",
+        "payload": {
+          "to": "sam@example.test",
+          "body": "Milk, eggs"
+        }
+      },
+      "expect": {
+        "refused": "grant_used"
+      }
+    },
+    {
+      "call": "household/v0.3/notify",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "member": "dana",
+        "kind": "ready"
+      },
+      "expect": {
+        "refused": "outside_audience"
+      }
+    },
+    {
+      "call": "household/v0.3/notify",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "member": "sam",
+        "kind": "ready"
+      }
+    },
+    {
+      "call": "household/v0.3/notify",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "member": "sam",
+        "kind": "ready"
+      },
+      "expect": {
+        "refused": "notification_budget_spent"
+      }
+    },
+    {
+      "call": "household/v0.3/notify",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "member": "sam",
+        "kind": "live_notice"
+      }
+    },
+    {
+      "call": "activities/v0.2/close",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        },
+        "activity": "${a1}"
+      }
+    },
+    {
+      "call": "activities/v0.2/watch",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        }
+      },
+      "expect": {
+        "ok": {
+          "events": [
+            {
+              "activity": "${a1}",
+              "detail": {
+                "to": "closed"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "call": "install/v0.1/read_app",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        }
+      }
+    },
+    {
+      "call": "install/v1.0/read_app",
+      "body": {
+        "caller": {
+          "app": "lists",
+          "member": "sam"
+        }
+      },
+      "expect": {
+        "refused": "surface_version_unsupported"
+      }
+    }
+  ],
+  "expect_mock": {
+    "mail": {
+      "household-mail": {
+        "delivered_count": 1
+      }
+    }
+  }
+}
