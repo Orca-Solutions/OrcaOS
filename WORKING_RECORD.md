@@ -1,5 +1,11 @@
 # Scaffold working record
 
+## October 21, 2026 — Provisional contract for products on top of the runtime
+
+Jason asked whether Diamond Dog (the product name; source documents still say OrcaOS) has an API that his Orca Keel product suite can build against. No runtime or API exists, and the Core specification and Developer model are held until the experiment gate. From the Glossary, the Decision log, the Scenario A Golem build's inner protocol and Orca Keel's written needs (asks DD-1 to DD-17), a provisional contract was drafted, then revised the same day with Orca Keel's answers and the first four gaps its add-on threads found (G-1 to G-4). Added as `interfaces/diamond-dog/provisional-contract.md` (MIT, per the licensing decision): ten surfaces versioned separately (1, 4, 6, 9 and 10 at 0.2, the rest at 0.1), the fake runtime Orca Keel builds against with its eight gating tests, what stays out, and what the gate can still change. The working copy and its page live in the Diamond Dog project files; further gaps from the other add-on threads land as commits on the same pull request.
+
+Author verification: the file renders; license coverage comes from REUSE.toml's `interfaces/**` rule plus an explicit SPDX comment. Not done here: the fake itself (who builds it is Jason's call) and any runtime code.
+
 ## October 11, 2026 — Readable code, v3.1.4
 
 Applied Jason’s queued General Management request during the regular documentation review: tasteful whitespace between distinct logical blocks, closely related statements kept together, and respect for existing formatters/linting and language idioms. Generated/minified code excluded; focused improvements to touched code only. No behavior changes, source-formatting campaign, checklist, review gate or formatter mandate. Updated guide, identical entry points and optional handoff prompt; aligned current companion version labels. Prior scaffold preserved in `Scaffold Policy Archive/before-v3.1.4-20261011`. Author verification covers affected text, entry-point parity, local links, whitespace and unchanged adapter/settings hashes. Central edits are complete; project adoption and draft PR delivery remain separately tracked in the weekly review state.
