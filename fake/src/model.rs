@@ -19,7 +19,7 @@ pub const SURFACES: [(&str, &str); 10] = [
     ("proposals", "0.3"),
     ("ledger", "0.1"),
     ("records", "0.3"),
-    ("egress", "0.2"),
+    ("egress", "0.3"),
     ("members", "0.2"),
     ("schedules", "0.3"),
     ("household", "0.3"),
@@ -164,6 +164,15 @@ pub struct Manifest {
     /// Apps that may open this app's routines.
     #[serde(default)]
     pub opened_by: Vec<String>,
+    /// The query parameters the app may send to each host it fetches from (G-17).
+    #[serde(default)]
+    pub fetch_params: Vec<FetchParams>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FetchParams {
+    pub host: String,
+    pub params: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -187,6 +196,10 @@ impl Manifest {
 
     pub fn record_type(&self, name: &str) -> Option<&RecordType> {
         self.record_types.iter().find(|t| t.name == name)
+    }
+
+    pub fn fetch_params(&self, host: &str) -> Vec<String> {
+        self.fetch_params.iter().filter(|f| f.host == host).flat_map(|f| f.params.clone()).collect()
     }
 
     pub fn may_read(&self, app: &str, record_type: &str) -> bool {

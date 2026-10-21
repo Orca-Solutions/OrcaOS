@@ -54,7 +54,11 @@ impl Fake {
             "web/page" => {
                 let host = s(body, "host")?;
                 let path = opt_s(body, "path").unwrap_or_else(|| "/".into());
-                let page = Page { body: opt_s(body, "body").unwrap_or_default(), redirect_to: opt_s(body, "redirect_to") };
+                let page = Page {
+                    body: opt_s(body, "body").unwrap_or_default(),
+                    content_type: opt_s(body, "content_type").unwrap_or_else(|| "text/html".into()),
+                    redirect_to: opt_s(body, "redirect_to"),
+                };
                 self.mock.web.entry(host).or_default().insert(path, page);
                 Ok(json!({ "ok": true }))
             }

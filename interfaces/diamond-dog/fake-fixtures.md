@@ -69,7 +69,7 @@ Under `/fake/` over HTTP, or `control` in a fixture. They belong to the fake, no
 | `clock/advance` | [`minutes`], [`hours`], [`days`], [`asleep`] | Moves the clock forward |
 | `mail/incoming` | `handle`, `from`, `subject`, `body` | Puts a mail in that mailbox |
 | `mail/fault` | `handle`, `fault`, [`count`] | Arms a fault for the next submissions: `never_acknowledge` (accepted and delivered, reply lost), `refuse`, `drop_request` (never arrives), `status_unavailable` (the next status check gets no answer) |
-| `web/page` | `host`, [`path`], `body`, [`redirect_to`] | Serves a page to the bounded browser |
+| `web/page` | `host`, [`path`], `body`, [`content_type`, default `text/html`], [`redirect_to`] | Serves a page or an API response |
 | `provider` | `name`, `price_cents` | Sets a provider's price per disclosure |
 | `ledger`, `mock`, `state` | — | The whole ledger; the mock services' summary; everything the fake holds |
 

@@ -121,3 +121,10 @@ fn a_weekly_run_keeps_its_wall_clock_time_across_the_change() {
     let at: Vec<DateTime<Utc>> = ticks.iter().map(|x| x.at).collect();
     assert_eq!(at, vec![t("2026-10-25T22:00:00Z"), t("2026-11-01T23:00:00Z")]);
 }
+
+#[test]
+fn the_payload_hash_ignores_key_order() {
+    let a: Value = serde_json::from_str(r#"{"to": "x", "body": {"b": 1, "a": 2}}"#).unwrap();
+    let b: Value = serde_json::from_str(r#"{"body": {"a": 2, "b": 1}, "to": "x"}"#).unwrap();
+    assert_eq!(crate::fake::hash(&a), crate::fake::hash(&b));
+}

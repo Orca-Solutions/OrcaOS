@@ -71,7 +71,7 @@
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
-            "egress": "0.2",
+            "egress": "0.3",
             "members": "0.2",
             "schedules": "0.3",
             "household": "0.3"
@@ -126,7 +126,7 @@
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
-            "egress": "0.2",
+            "egress": "0.3",
             "members": "0.2",
             "schedules": "0.3",
             "household": "0.3"

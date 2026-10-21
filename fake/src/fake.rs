@@ -145,10 +145,31 @@ pub fn time(body: &Value, key: &str) -> Result<Option<DateTime<Utc>>, CallError>
 }
 
 /// The hash a payload, a draft or a work state is bound by: SHA-256 over its
-/// JSON with object keys in sorted order.
+/// JSON with object keys in sorted order, so the order a client sends keys
+/// in never changes it.
 pub fn hash(v: &Value) -> String {
-    let canonical = serde_json::to_string(v).unwrap_or_default();
+    let canonical = serde_json::to_string(&sorted(v)).unwrap_or_default();
     format!("sha256:{}", hex::encode(Sha256::digest(canonical.as_bytes())))
+}
+
+fn sorted(v: &Value) -> Value {
+    match v {
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            Value::Object(keys.into_iter().map(|k| (k.clone(), sorted(&map[k]))).collect())
+        }
+        Value::Array(items) => Value::Array(items.iter().map(sorted).collect()),
+        other => other.clone(),
+    }
+}
+
+fn lowercase_first(text: &str) -> String {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) => first.to_lowercase().chain(chars).collect(),
+        None => String::new(),
+    }
 }
 
 pub fn stamp(t: DateTime<Utc>) -> String {
@@ -398,11 +419,7 @@ impl Fake {
             (Some(op), None) => op.clone(),
             _ => format!("{surface}.{name}"),
         };
-        let mut reason = r.text.clone();
-        if let Some(first) = reason.get(..1) {
-            reason = first.to_lowercase() + &reason[1..];
-        }
-        let plain = format!("{actor} asked for {what}; refused: {reason}.");
+        let plain = format!("{actor} asked for {what}; refused: {}.", r.text);
 
         let source = who.map(Who::source).unwrap_or_else(|| Source::service("call gate"));
         let mut entry = Entry::new("refusal", source, plain)
@@ -507,7 +524,7 @@ impl Fake {
     pub fn shell_member(&self, who: &Who, what: &str) -> Result<String, CallError> {
         match (who.kind, &who.member) {
             (CallerKind::Shell, Some(m)) => Ok(m.clone()),
-            _ => Err(refuse("not_through_shell", format!("{what} happens only through the shell, by a member")).into()),
+            _ => Err(refuse("not_through_shell", format!("{} happens only through the shell, by a member", lowercase_first(what))).into()),
         }
     }
 
@@ -519,7 +536,7 @@ impl Fake {
         if !paired {
             return Err(refuse(
                 "device_not_paired",
-                format!("{what} is given only on a paired device; {} is not paired to {member}", if device.is_empty() { "no device" } else { &device }),
+                format!("{} is given only on a paired device; {} is not paired to {member}", lowercase_first(what), if device.is_empty() { "no device" } else { &device }),
             )
             .member(member)
             .into());

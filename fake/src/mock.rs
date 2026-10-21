@@ -77,6 +77,7 @@ pub struct Provider {
 #[derive(Clone, Debug, Serialize)]
 pub struct Page {
     pub body: String,
+    pub content_type: String,
     pub redirect_to: Option<String>,
 }
 

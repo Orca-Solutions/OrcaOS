@@ -73,7 +73,7 @@
             "proposals": "0.3",
             "ledger": "0.1",
             "records": "0.3",
-            "egress": "0.2",
+            "egress": "0.3",
             "members": "0.2",
             "schedules": "0.3",
             "household": "0.3"
@@ -209,7 +209,7 @@
       }
     },
     {
-      "call": "egress/v0.2/disclose",
+      "call": "egress/v0.3/disclose",
       "body": {
         "caller": {
           "routine": "${a1}"
@@ -228,7 +228,7 @@
       }
     },
     {
-      "call": "egress/v0.2/loosen",
+      "call": "egress/v0.3/loosen",
       "body": {
         "caller": {
           "shell": "dana",
@@ -241,7 +241,7 @@
       }
     },
     {
-      "call": "egress/v0.2/disclose",
+      "call": "egress/v0.3/disclose",
       "body": {
         "caller": {
           "routine": "${a1}"

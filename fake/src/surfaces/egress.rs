@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: The OrcaOS Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Surface 7, egress and disclosure (0.2). Every byte that leaves goes
+//! Surface 7, egress and disclosure (0.3). Every byte that leaves goes
 //! through an adapter under a grant, and every disclosure is journaled with
 //! what went where.
 
@@ -13,14 +13,36 @@ use crate::ledger::{Entry, Source};
 use crate::model::*;
 
 impl Fake {
+    /// Fetch: a page through the bounded browser, or (G-17, `api: true`) an
+    /// API request whose raw body comes back with its content type. Either
+    /// way the grant is scoped to the host, and only the query parameters
+    /// the manifest declares for that host may be sent.
     pub fn fetch(&mut self, who: &Who, body: &Value) -> Res {
         let aid = self.acting_activity(who, body)?;
         let host = s(body, "host")?;
         let path = opt_s(body, "path").unwrap_or_else(|| "/".into());
+        let api = body.get("api").and_then(Value::as_bool).unwrap_or(false);
+        let query = body.get("query").and_then(Value::as_object).cloned().unwrap_or_default();
         let object = format!("web:{host}");
 
         let g = self.check_grant(&aid, "web.fetch", &object, opt_s(body, "grant"))?;
         let act = self.activities[&aid].clone();
+
+        let declared = self.apps[&act.app].manifest.fetch_params(&host);
+        let undeclared: Vec<&String> = query.keys().filter(|k| !declared.contains(k)).collect();
+        if !undeclared.is_empty() {
+            let names: Vec<&str> = undeclared.iter().map(|k| k.as_str()).collect();
+            return Err(refuse("query_parameter_undeclared", format!("{} may not send {} to {host}; its manifest declares only {:?}", self.app_name(&act.app), names.join(", "), declared))
+                .app(&act.app)
+                .activity(&aid)
+                .holder(format!("activity:{aid}"))
+                .operation("web.fetch")
+                .object(&object)
+                .grant(&g.id)
+                .detail(json!({ "undeclared": names, "declared": declared }))
+                .into());
+        }
+
         let page = self.mock.web.get(&host).and_then(|p| p.get(&path)).cloned();
 
         if let Some(to) = page.as_ref().and_then(|p| p.redirect_to.clone()) {
@@ -36,17 +58,20 @@ impl Fake {
             }
         }
 
-        let (status, text) = match &page {
-            Some(p) => (200, p.body.clone()),
-            None => (404, String::new()),
+        let (status, text, content_type) = match &page {
+            Some(p) => (200, p.body.clone(), p.content_type.clone()),
+            None => (404, String::new(), "text/plain".to_string()),
         };
-        self.mock.fetches.push(json!({ "activity": aid, "host": host, "path": path, "status": status }));
+        let mut params: Vec<&String> = query.keys().collect();
+        params.sort();
+        self.mock.fetches.push(json!({ "activity": aid, "host": host, "path": path, "query": query, "api": api, "status": status }));
         self.touch(&aid);
         self.activities.get_mut(&aid).unwrap().used_grants.insert(g.id.clone());
 
-        let plain = format!("{} fetched {host}{path} through the bounded browser under grant {} ({status}).", self.app_name(&act.app), g.id);
+        let adapter = if api { "fetch adapter" } else { "bounded browser" };
+        let plain = format!("{} fetched {host}{path} through the {adapter} under grant {} ({status}).", self.app_name(&act.app), g.id);
         self.journal(
-            Entry::new("fetch", Source::external(&host, "bounded browser"), plain)
+            Entry::new("fetch", Source::external(&host, adapter), plain)
                 .app(&act.app)
                 .activity(&aid)
                 .member(&act.acts_for)
@@ -55,12 +80,13 @@ impl Fake {
                 .object(&object)
                 .evidence("observed")
                 .authority(json!({ "grant": g.id, "principal": g.principal }))
-                .detail(json!({ "path": path, "status": status })),
+                .detail(json!({ "path": path, "api": api, "params": params, "status": status })),
         );
         Ok(json!({
             "status": status,
+            "content_type": content_type,
             "body": text,
-            "provenance": { "source": "external", "system": host, "relayed_by": "bounded browser", "trust": "untrusted" },
+            "provenance": { "source": "external", "system": host, "relayed_by": adapter, "trust": "untrusted" },
         }))
     }
 

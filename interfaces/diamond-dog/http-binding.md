@@ -5,7 +5,7 @@ SPDX-License-Identifier: MIT
 
 # Diamond Dog provisional contract over HTTP
 
-Revision 2026-10-21. The HTTP binding the fake Diamond Dog (`fake/` in this repository) answers today. It carries the surfaces of the [provisional contract](provisional-contract.md) at the versions that contract names on 2026-10-21, third pass: surfaces 1, 2, 3, 4, 6, 9 and 10 at 0.3; 7 and 8 at 0.2; 5 at 0.1. The contract decides what each call means and when it is refused; this file decides only how a call travels. Where the two disagree, the contract wins and this file is wrong.
+Revision 2026-10-21. The HTTP binding the fake Diamond Dog (`fake/` in this repository) answers today. It carries the surfaces of the [provisional contract](provisional-contract.md) at the versions that contract names on 2026-10-21, fourth pass: surfaces 1, 2, 3, 4, 6, 7, 9 and 10 at 0.3; 8 at 0.2; 5 at 0.1. The contract decides what each call means and when it is refused; this file decides only how a call travels. Where the two disagree, the contract wins and this file is wrong.
 
 The real runtime may bind the contract differently. Code that keeps its HTTP calls behind one small client module will swap with a version bump and a new client, not a rewrite.
 
@@ -33,7 +33,7 @@ Software is never a principal: no app or routine caller can grant, approve or at
 | 403 | `{"ok": false, "refused": {"code": "...", "reason": "...", "ledger_seq": 12}}` | Refused. Every refusal is journaled; `ledger_seq` is its line |
 | 400 | `{"ok": false, "error": "..."}` | The request could not be read: bad JSON, a missing field, an unknown id. Not a refusal and not journaled |
 
-Codes are stable snake_case words; the reason is plain language and may change. The codes in use: `activity_not_open`, `activity_suspended`, `already_closed`, `already_closing`, `already_installed`, `app_not_installed`, `app_off`, `approval_expired`, `approval_needed`, `audience_too_wide`, `beyond_member_authority`, `beyond_parent_authority`, `caller_not_principal`, `catch_up_too_long`, `category_locked`, `category_not_allowed`, `concurrency_key_held`, `cost_allowance_spent`, `device_not_paired`, `expiry_beyond_activity`, `grant_ended`, `grant_expired`, `grant_revoked`, `grant_used`, `hosted_model_rule`, `needs_proposal`, `no_adapter_contract`, `no_grant`, `no_grant_could_cover`, `not_a_member`, `not_adult`, `not_allowed_to_approve`, `not_owner`, `not_through_shell`, `not_writer_or_owner`, `notification_budget_spent`, `notification_kind_undeclared`, `object_outside_grant`, `object_outside_manifest`, `open_not_declared`, `operation_not_in_manifest`, `operation_not_standing`, `outside_audience`, `payload_changed`, `principal_may_not_grant`, `principal_may_not_use_app`, `proposal_not_pending`, `provider_not_declared`, `read_scope_missing`, `record_type_undeclared`, `redirect_off_host`, `routine_not_in_manifest`, `routine_not_scheduled`, `second_settings_panel`, `spend_ceiling_reached`, `surface_version_unsupported`, `temporary_grants_live`, `trust_label_not_allowed`, `unknown_activity`, `unknown_member`, `work_state_changed`, `work_state_missing`.
+Codes are stable snake_case words; the reason is plain language and may change. The codes in use: `activity_not_open`, `activity_suspended`, `already_closed`, `already_closing`, `already_installed`, `app_not_installed`, `app_off`, `approval_expired`, `approval_needed`, `audience_too_wide`, `beyond_member_authority`, `beyond_parent_authority`, `caller_not_principal`, `catch_up_too_long`, `category_locked`, `category_not_allowed`, `concurrency_key_held`, `cost_allowance_spent`, `device_not_paired`, `expiry_beyond_activity`, `grant_ended`, `grant_expired`, `grant_revoked`, `grant_used`, `hosted_model_rule`, `needs_proposal`, `no_adapter_contract`, `no_grant`, `no_grant_could_cover`, `not_a_member`, `not_adult`, `not_allowed_to_approve`, `not_owner`, `not_through_shell`, `not_writer_or_owner`, `notification_budget_spent`, `notification_kind_undeclared`, `object_outside_grant`, `object_outside_manifest`, `open_not_declared`, `operation_not_in_manifest`, `operation_not_standing`, `outside_audience`, `payload_changed`, `principal_may_not_grant`, `principal_may_not_use_app`, `proposal_not_pending`, `provider_not_declared`, `query_parameter_undeclared`, `read_scope_missing`, `record_type_undeclared`, `redirect_off_host`, `routine_not_in_manifest`, `routine_not_scheduled`, `second_settings_panel`, `spend_ceiling_reached`, `surface_version_unsupported`, `temporary_grants_live`, `trust_label_not_allowed`, `unknown_activity`, `unknown_member`, `work_state_changed`, `work_state_missing`.
 
 ## Operations and objects
 
@@ -73,7 +73,8 @@ Keeping a record inside the household is not an operation (G-5); it is surface 6
   "notifications": { "kinds": ["digest"], "per_day": 3 },
   "off_revokes": false,
   "opens": [ { "app": "lists", "routine": "groceries" } ],
-  "opened_by": ["the-week"]
+  "opened_by": ["the-week"],
+  "fetch_params": [ { "host": "api.recalls.example", "params": ["year", "make", "model"] } ]
 }
 ```
 
@@ -149,17 +150,17 @@ Fields in brackets are optional. "Routine" means the call is made as `{"routine"
 
 `audience` is `"household"`, `{"members": [...]}` or `{"guardians_of": "<child>"}`. Trust is `untrusted` for anything relayed from outside, `member` only for a member's own words, and never `service` from an app. A routine's audience may not reach beyond its activity's.
 
-### egress (0.2)
+### egress (0.3)
 
 | Call | Body | Result |
 | --- | --- | --- |
-| `fetch` | routine; `host`, [`path`] | `status`, `body`, provenance `untrusted` |
+| `fetch` | routine; `host`, [`path`]; [`api`: true for an API request (G-17)]; [`query`: `{name: value}`] | `status`, `content_type`, `body` (a page through the bounded browser, or the raw body through the fetch adapter), provenance `untrusted` |
 | `disclose` | routine; `provider`, `categories`, `content`, [`records`] | The receipt, naming provider, categories, conversation and grant |
 | `loosen` | shell; `activity`, `categories` | Those categories may leave for that activity only |
 | `lock_category` | shell (owner); `category`, [`unlock`] | Locked for every matter |
 | `lan` | routine; `target`, `job` | The receipt |
 
-A disclosure's categories are the ones named plus every category the named records' types carry. The fake does not read free text.
+Every `query` parameter must be one the manifest's `fetch_params` declares for that host, page or API alike; any other is refused with `query_parameter_undeclared` and journaled, so "never the VIN" is enforced. A disclosure's categories are the ones named plus every category the named records' types carry. The fake does not read free text.
 
 ### members (0.2)
 
@@ -208,6 +209,6 @@ A disclosure's categories are the ones named plus every category the named recor
 }
 ```
 
-Fields that do not apply are left out. `source.kind` is `principal`, `participant`, `service` or `external`. `outcome.state` is `submitted`, `acknowledged`, `unknown`, `failed` (with `why`: `refused` or `certified_not_started`) or `reconciled` (with `to` and `evidence`). `evidence` is `claimed`, `attested`, `observed` or `acknowledged`. A refusal carries `reason: {code, text}`. `visible_to` lists members who may read a line beyond the usual audience: the guardians, on every read of their child's record.
+Fields that do not apply are left out. Hashes (`payload_hash`, `bound_hash`) are `sha256:` and the hex SHA-256 of the JSON value with object keys sorted, so the order a client sends keys in never changes them. `source.kind` is `principal`, `participant`, `service` or `external`. `outcome.state` is `submitted`, `acknowledged`, `unknown`, `failed` (with `why`: `refused` or `certified_not_started`) or `reconciled` (with `to` and `evidence`). `evidence` is `claimed`, `attested`, `observed` or `acknowledged`. A refusal carries `reason: {code, text}`. `visible_to` lists members who may read a line beyond the usual audience: the guardians, on every read of their child's record.
 
 Kinds in use: `install`, `switch_on`, `switch_off`, `pause`, `uninstall`, `connection`, `activity`, `grant`, `grant_held`, `grant_confirmed`, `grant_ended`, `revocation`, `read`, `fetch`, `proposal`, `approval`, `authorization`, `approval_voided`, `decline`, `withdrawal`, `approval_rule`, `consumption`, `receipt`, `disclosure`, `status_check`, `reconciliation`, `claim`, `attestation`, `record`, `record_read`, `promotion`, `deletion`, `read_allowed`, `loosened`, `category_lock`, `pairing`, `guardians`, `schedule`, `tick`, `notification`, `allowance`, `contribution`, `answer`, `refusal`.
