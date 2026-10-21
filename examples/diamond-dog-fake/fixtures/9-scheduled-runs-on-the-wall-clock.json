@@ -1,0 +1,267 @@
+{
+  "name": "Scheduled runs on the wall clock",
+  "about": "Not one of the eight gating tests. A daily 02:30 run across the spring clock change (14 March 2027) fires at the next valid minute; of two runs missed while Diamond Dog was not running the older is skipped and the latest catches up once, late, inside its window, and acts for the member who switched the app on.",
+  "setup": {
+    "now": "2027-03-12T12:00:00Z",
+    "household": {
+      "zone": "America/New_York",
+      "members": [
+        {
+          "id": "dana",
+          "name": "Dana",
+          "role": "owner",
+          "may_approve": [
+            "*"
+          ],
+          "devices": [
+            "dana-phone"
+          ]
+        },
+        {
+          "id": "sam",
+          "name": "Sam",
+          "role": "adult",
+          "may_approve": [
+            "mail.send",
+            "calendar.write"
+          ],
+          "devices": [
+            "sam-phone"
+          ]
+        },
+        {
+          "id": "maya",
+          "name": "Maya",
+          "role": "child"
+        }
+      ],
+      "guardians": {
+        "maya": [
+          "dana"
+        ]
+      }
+    },
+    "connections": [
+      {
+        "handle": "household-mail",
+        "kind": "mail",
+        "account": "family@example.test"
+      },
+      {
+        "handle": "claude",
+        "kind": "provider"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "daybook",
+          "name": "Daybook",
+          "version": "0.1.0",
+          "kind": "core",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.3",
+            "grants": "0.3",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.3",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "note"
+            },
+            {
+              "name": "mail_item"
+            },
+            {
+              "name": "health_note",
+              "categories": [
+                "health"
+              ]
+            }
+          ],
+          "routines": [
+            {
+              "name": "intake",
+              "timeout_minutes": 30
+            },
+            {
+              "name": "reply",
+              "timeout_minutes": 60
+            },
+            {
+              "name": "morning",
+              "trigger": "schedule",
+              "concurrency_key": "morning",
+              "timeout_minutes": 30
+            }
+          ],
+          "operations": [
+            {
+              "operation": "mail.read",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "standing"
+            },
+            {
+              "operation": "mail.send",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "standing",
+              "approval": "required"
+            },
+            {
+              "operation": "provider.disclose",
+              "adapter": "provider",
+              "object": "provider:claude",
+              "grant": "standing"
+            }
+          ],
+          "providers": [
+            {
+              "name": "claude"
+            }
+          ],
+          "disclosure_categories": [
+            "general",
+            "health"
+          ],
+          "notifications": {
+            "kinds": [
+              "digest"
+            ],
+            "per_day": 3
+          }
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "app": "daybook",
+        "standing_grants": [
+          {
+            "operation": "mail.read",
+            "object": "mail:household-mail"
+          }
+        ]
+      },
+      "save": {
+        "install_grants": "grants"
+      }
+    },
+    {
+      "call": "schedules/v0.3/schedule",
+      "body": {
+        "caller": {
+          "app": "daybook",
+          "member": "dana"
+        },
+        "routine": "morning",
+        "at": "02:30",
+        "cadence": "daily"
+      },
+      "save": {
+        "s1": "schedule"
+      }
+    },
+    {
+      "control": "clock/set",
+      "body": {
+        "at": "2027-03-14T12:00:00Z"
+      }
+    },
+    {
+      "control": "clock/set",
+      "body": {
+        "at": "2027-03-15T12:00:00Z"
+      }
+    },
+    {
+      "control": "clock/set",
+      "body": {
+        "at": "2027-03-17T12:00:00Z",
+        "asleep": true
+      }
+    }
+  ],
+  "expect_ledger": [
+    {
+      "kind": "tick",
+      "member": "dana",
+      "detail": {
+        "schedule": "${s1}",
+        "ran": true,
+        "due": "2027-03-13T07:30:00Z",
+        "late": false
+      }
+    },
+    {
+      "kind": "activity",
+      "detail": {
+        "to": "closing",
+        "why": "it reached its timeout"
+      },
+      "at": "2027-03-13T08:00:00Z"
+    },
+    {
+      "kind": "activity",
+      "detail": {
+        "to": "closed"
+      },
+      "at": "2027-03-13T08:00:00Z"
+    },
+    {
+      "kind": "tick",
+      "detail": {
+        "schedule": "${s1}",
+        "ran": true,
+        "due": "2027-03-14T07:00:00Z",
+        "adjustment": "the clocks skipped this time; the run fired at the next valid minute"
+      }
+    },
+    {
+      "kind": "tick",
+      "detail": {
+        "schedule": "${s1}",
+        "ran": true,
+        "due": "2027-03-15T06:30:00Z",
+        "adjustment": null
+      }
+    },
+    {
+      "kind": "tick",
+      "detail": {
+        "schedule": "${s1}",
+        "ran": false,
+        "due": "2027-03-16T06:30:00Z"
+      }
+    },
+    {
+      "kind": "tick",
+      "member": "dana",
+      "detail": {
+        "schedule": "${s1}",
+        "ran": true,
+        "due": "2027-03-17T06:30:00Z",
+        "late": true
+      }
+    }
+  ]
+}

@@ -7,3 +7,6 @@ node_modules/
 
 # Internal, dated infrastructure inventory; never publish with app source.
 /docs/PLATFORM_SNAPSHOT.md
+
+# Rust build output
+target/

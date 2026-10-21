@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: The OrcaOS Authors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# The fake Diamond Dog: a local test double for the provisional contract.
+# It proves nothing about isolation or durability; see README.md.
+[package]
+name = "fake-diamond-dog"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+chrono-tz = "0.10"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+tiny_http = "0.12"
