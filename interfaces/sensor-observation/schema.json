@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:orcaos:interface:sensor-observation:0.1",
-  "title": "OrcaOS sensor observation interface 0.1 (draft)",
+  "$id": "urn:diamond-dog:interface:sensor-observation:0.1",
+  "title": "Diamond Dog sensor observation interface 0.1 (draft)",
   "description": "Provider-neutral sensor observation and coverage shapes (MIT). Rules: README.md beside this file. Daybook implements the same definitions in its proposed satellite contract; a change to one changes both in the same release.",
   "$defs": {
     "SensorQuantity": {
