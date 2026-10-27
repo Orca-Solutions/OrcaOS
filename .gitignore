@@ -10,3 +10,6 @@ node_modules/
 
 # Rust build output
 target/
+
+# Personal agent overrides stay local; shared entry points remain tracked.
+CLAUDE.local.md
