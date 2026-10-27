@@ -12,7 +12,28 @@ Results are stated as narrowly as the Golem build's: a pass means this compositi
 - Results: [../results/2026-10-27-conventional/summary.md](../results/2026-10-27-conventional/summary.md), with the reproducibility record, mount lists, every repetition, the journals and the mock service logs next to it.
 - Scorecard and the early-exit check against Golem: [Custom machinery](#custom-machinery) and [Early-exit check](#early-exit-check) below.
 
-RESULTS-PLACEHOLDER
+## Results, 2026-10-27
+
+The conventional composition with the code here passed every test in this conformance suite, under the assumptions recorded in [record.json](../results/2026-10-27-conventional/record.json): one host, one principal, synthetic data, the mock mail service, and the repository at commit `166af6b` with a clean tree.
+
+| Test | Repetitions | Result | Median time per repetition |
+| --- | ---: | --- | ---: |
+| 1. An unrelated read is denied | 1 | Passed | 0.8 s |
+| 2. A changed payload is not authorized | 1 | Passed | 3.7 s |
+| 3. Revoke, then restart | 20 | Passed | 10 s |
+| 3 at P1 (revoked after the check, before consumption) | 20 | Passed | 3.5 s |
+| 3 at P2 (revoked after consumption, before the send) | 20 | Passed | 3.5 s |
+| 4. A lost acknowledgment | 1 | Passed | 3.4 s |
+| 4 with the status endpoint offline | 1 | Passed | 16 s |
+| 5. A participant is replaced | 1 | Passed | 2.7 s |
+| 6. Two children share one budget | 100 | Passed | 0.4 s |
+| 7a. C1, then cancel | 20 | Passed, and 20/20 certified not started after the window | 9.3 s |
+| 7b. C1, then revoke | 20 | Passed, and 20/20 after the window | 12 s |
+| 7c. C2, then cancel | 20 | Passed | 9.4 s |
+| 7d. C2 with the request lost, then cancel and close | 20 | Passed, and 20/20 after the window | 9.5 s |
+| 7e. C1, nothing (control) | 20 | Passed | 9.7 s |
+
+In 7a to 7d the mock's attempt log, written before deduplication, showed no submission attempt and no wire request after the crash in any repetition, so Temporal did not resend the in-flight request and the adapter did not re-dispatch. In 7e the adapter re-dispatched once with the same identifier, journaled as a re-dispatch. Participant containers matched the plan's grant table and confinement before and after the suite ([mounts-before.json](../results/2026-10-27-conventional/mounts-before.json), [mounts-after.json](../results/2026-10-27-conventional/mounts-after.json)). Each of the 120 crash repetitions killed and restarted all five platform processes; the restart took 0.78 s at the median (0.72 to 1.09 s), and the interrupted delivery resumed about 5 s later, when its heartbeat timed out. Golem's roughly 30-second resume is most of the difference between the two builds' times.
 
 ## What runs
 
