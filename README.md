@@ -12,6 +12,7 @@ This repository contains the provisional Diamond Dog interfaces, a local fake ru
 | Read the product-facing contracts | [interfaces/diamond-dog/](interfaces/diamond-dog/) |
 | Inspect the reference fixtures | [examples/diamond-dog-fake/](examples/diamond-dog-fake/) |
 | Understand the fake's scope | [Fake runtime decision](docs/decisions/0002-fake-diamond-dog.md) |
+| Follow the experimental runtime skeleton | [runtime/README.md](runtime/README.md) and [its decision](docs/decisions/0003-runtime-skeleton.md) |
 | Follow the existing delivery rules | [Operating guide](SOFTWARE_OPERATING_GUIDE.md) and [PR workflow](PR_WORKFLOW.md) |
 
 ## License

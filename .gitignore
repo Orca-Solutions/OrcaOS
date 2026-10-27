@@ -13,3 +13,6 @@ target/
 
 # Personal agent overrides stay local; shared entry points remain tracked.
 CLAUDE.local.md
+
+# The runtime's default journal when served from a checkout
+diamond-dog.journal

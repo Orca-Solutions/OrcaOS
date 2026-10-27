@@ -9,6 +9,8 @@ Revision 2026-10-21. The HTTP binding the fake Diamond Dog (`fake/` in this repo
 
 The real runtime may bind the contract differently. Code that keeps its HTTP calls behind one small client module will swap with a version bump and a new client, not a rewrite.
 
+The experimental runtime skeleton in `runtime/` answers this same binding, on port 7478 so it can run beside the fake. Its `GET /surfaces` answers `"runtime": "diamond-dog"` and `"experimental": true`, and it answers the test controls below `/fake/` only when started with `--test-controls`.
+
 ## Requests
 
 Every call is `POST /<surface>/v<major.minor>/<call>` with a JSON body. Surface names: `install`, `activities`, `grants`, `proposals`, `ledger`, `records`, `egress`, `members`, `schedules`, `household`. `GET /surfaces` lists the version each surface answers.

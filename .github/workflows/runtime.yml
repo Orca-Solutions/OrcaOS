@@ -1,0 +1,40 @@
+# Runs the experimental Diamond Dog runtime's tests: its enforcement core's
+# unit tests, the restart tests, and the same fixtures the fake runs. See
+# runtime/README.md.
+name: Diamond Dog runtime
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "runtime/**"
+      - "examples/diamond-dog-fake/**"
+      - "fake/tests/fixtures/**"
+      - ".github/workflows/runtime.yml"
+  pull_request:
+    paths:
+      - "runtime/**"
+      - "examples/diamond-dog-fake/**"
+      - "fake/tests/fixtures/**"
+      - ".github/workflows/runtime.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy && rustup default stable
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Lint
+        run: cargo clippy --locked --all-targets -- -D warnings
