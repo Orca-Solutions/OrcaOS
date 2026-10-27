@@ -5,9 +5,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # Scenario A on Golem
 
-The deterministic Scenario A experiment from the OrcaOS experiment plan, built on a properly restricted Golem 1.6.0. It covers the mock mail service, the deterministic processors and drafter, the trusted mail adapter, the failure-injection harness with facilitator controls, and the seven acceptance tests plus the test 3 variant (revocation during the enforcement check at P1 and P2).
+The deterministic Scenario A experiment from the experiment plan (written when Diamond Dog was still called OrcaOS), built on a properly restricted Golem 1.6.0. It covers the mock mail service, the deterministic processors and drafter, the trusted mail adapter, the failure-injection harness with facilitator controls, and the seven acceptance tests plus the test 3 variant (revocation during the enforcement check at P1 and P2).
 
-It does not cover the AI participant, the conventional baseline or any OrcaOS runtime. Results are stated narrowly: a pass means Golem plus the code here passed this conformance suite under the recorded assumptions. It does not mean the build is secure.
+It does not cover the AI participant, the conventional baseline or any Diamond Dog runtime. Results are stated narrowly: a pass means Golem plus the code here passed this conformance suite under the recorded assumptions. It does not mean the build is secure.
 
 - Results: [results/2026-10-20-golem/summary.md](results/2026-10-20-golem/summary.md), with the reproducibility record, card lists, every repetition, the journals and the mock service logs next to it.
 - Scorecard: [Custom machinery](#custom-machinery) below.
@@ -207,7 +207,7 @@ Excluded: the Seeder (20, harness). Golem 1.6 needs both a lower and an upper bo
 
 | Part | Code lines | Status |
 | --- | ---: | --- |
-| `shared/orca-ref` (source) | 1,457 | Reported separately: what OrcaOS would have to maintain |
+| `shared/orca-ref` (source) | 1,457 | Reported separately: what Diamond Dog would have to maintain |
 | `shared/orca-ref` (tests) | 424 | Reported separately |
 | Processors and drafter (`participants.rs` 150, `scenario-task` 77) | 227 | Excluded (shared task code) |
 | Mock mail service | 512 | Excluded (shared) |
