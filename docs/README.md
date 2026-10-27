@@ -1,16 +1,28 @@
 # Documentation index
 
-Project maintainers: replace the placeholder entries below with the project's documentation paths and when to read each one.
+Where Diamond Dog's repository documents live and when to read each one. The repository and older documents still use the working name OrcaOS.
 
-- ../PROJECT_BRIEF.md: approved scope, acceptance criteria, and permissions.
-- ../WORKING_RECORD.md: current state, tasks, verification, and review dispositions.
-- AGENT_ROLES.md: optional specialist contracts for Claude and Codex; local/private unless explicitly supplied remotely.
-- ../SOFTWARE_OPERATING_GUIDE.md: current shared operating philosophy, complete behavior, durable documentation, consequence-based verification and authority boundaries.
-- ../CLAUDE.md / ../AGENTS.md: identical provider entry points and project commands.
+## The project
+
+- ../README.md: what Diamond Dog is, what is built versus planned, and the license split.
+- ../WORKING_RECORD.md: dated record of what was decided, built and checked. Newest entry first.
+- ../PROJECT_BRIEF.md and SPEC.md: status notes only. The approved scope lives in the experiment plan and decision log outside this repository, and the core specification waits for the experiment's results.
+- decisions/: accepted architecture decisions. 0001 licensing; 0002 the fake Diamond Dog.
+- handoffs/: dated implementation, review and merge handoffs.
+
+## The code and its contracts
+
+- ../interfaces/README.md: the provisional contract, its HTTP binding and fixture format, and the sensor observation draft (MIT).
+- ../fake/README.md: running the fake Diamond Dog, what it does not prove, and where it reads the contract.
+- ../examples/diamond-dog-fake/README.md: the reference household, manifest and fixtures.
+- ../experiment/README.md: Scenario A on Golem, its results, scorecard and findings about Golem.
+
+## How we work
+
+- ../CLAUDE.md / ../AGENTS.md: identical agent entry points and project commands.
+- ../SOFTWARE_OPERATING_GUIDE.md: shared operating philosophy, complete behavior, durable documentation, consequence-based verification and authority boundaries.
 - ../PR_WORKFLOW.md: proportionate verification, selective independent review and merge follow-through.
-- SPEC.md: project specification; fill in before implementation where required.
-- decisions/: accepted and superseded architecture decisions.
-- handoffs/: dated implementation, review, and merge handoffs.
-
-- DEVOPS.md: fill-in deployment agreement and platform constraints; review before architecture decisions and deployment-affecting changes.
-- PLATFORM_SNAPSHOT.md: dated internal Oracle usage/capacity/cost reference; local and Git-ignored, not automatically delivered to remote workers. Refresh before admission or spending decisions.
+- ../HANDOFF_TEMPLATES.md: optional handoff prompts.
+- AGENT_ROLES.md: optional specialist contracts for Claude and Codex.
+- DEVOPS.md: fill-in deployment agreement. Nothing is deployed; review it before any hosting, auth or release change.
+- PLATFORM_SNAPSHOT.md: dated internal usage and cost reference. Local and Git-ignored; never committed.

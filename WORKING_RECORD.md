@@ -1,4 +1,10 @@
-# Scaffold working record
+# Working record
+
+## October 27, 2026 — Diamond Dog name in the README and docs
+
+Jason asked for the README to carry the Diamond Dog branding and for a general refresh of the repository docs. The product is Diamond Dog ("a delegation-first operating environment", primary line "Delegate work, not your identity."), following the brand book; the repository, folders, crates and SPDX copyright line keep the OrcaOS name because no rename has been ordered. The README now says plainly what is built on `main` (the provisional contract, the fake Diamond Dog with its CI job, Scenario A on Golem, the sensor observation draft from PR #7), what is in progress on branches (the conventional baseline, an experimental runtime skeleton) and what is planned (the real runtime, the inspector, the SDK). Also: the documentation index lists the real documents instead of scaffold placeholders, PROJECT_BRIEF.md and docs/SPEC.md say why they are empty, the agent entry points list the project's commands and the naming and vocabulary rules, and the interface, SDK, examples and experiment READMEs use the new name. No code, license header or license mapping changed.
+
+Verification: `reuse lint` passes; AGENTS.md and CLAUDE.md are identical; relative links in the touched files resolve; the touched prose avoids the Glossary's avoid-words.
 
 ## October 21, 2026 — The fake Diamond Dog
 

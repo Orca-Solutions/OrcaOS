@@ -29,7 +29,7 @@ Software is never a principal: no app or routine caller can grant, approve or at
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | `{"ok": true, "result": {...}}` | Done as asked |
+| 200 | `{"ok": true, "result": {...}}` | Carried out as asked |
 | 403 | `{"ok": false, "refused": {"code": "...", "reason": "...", "ledger_seq": 12}}` | Refused. Every refusal is journaled; `ledger_seq` is its line |
 | 400 | `{"ok": false, "error": "..."}` | The request could not be read: bad JSON, a missing field, an unknown id. Not a refusal and not journaled |
 
