@@ -1,0 +1,128 @@
+[
+  {
+    "agent": "Journal(\"full2-cards\")",
+    "declared": [
+      "env(?agent) : read : *"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Supervisor(\"full2-cards\")",
+    "declared": [
+      "agent(?component/Journal(*)) : invoke : *",
+      "card(?account) : * : *",
+      "env(?agent) : read : *",
+      "kv(?env) : read : revoked.none",
+      "kv(?env) : write : revoked.none"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Activity(\"full2-cards\",\"A1\")",
+    "declared": [
+      "agent(?component/Drafter(*)) : invoke : *",
+      "agent(?component/Journal(*)) : invoke : *",
+      "agent(?component/Processor1(*)) : invoke : *",
+      "agent(?component/Processor2(*)) : invoke : *",
+      "agent(?component/Processor2Alt(*)) : invoke : *",
+      "env(?agent) : read : *"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Processor1(\"full2-cards\",\"processor-1\")",
+    "declared": [
+      "env(?agent) : read : *",
+      "kv(?env) : read : docs.c1@v1",
+      "kv(?env) : read : docs.c2@v1",
+      "kv(?env) : write : out-A1-1.*"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Processor2(\"full2-cards\",\"processor-2\")",
+    "declared": [
+      "env(?agent) : read : *",
+      "kv(?env) : read : docs.c3@v1",
+      "kv(?env) : read : out-A1-2.*",
+      "kv(?env) : write : out-A1-2.*"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Processor2Alt(\"full2-cards\",\"processor-2b\")",
+    "declared": [
+      "env(?agent) : read : *",
+      "kv(?env) : read : docs.c3@v1",
+      "kv(?env) : read : out-A1-2.*",
+      "kv(?env) : write : out-A1-2.*"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Drafter(\"full2-cards\",\"drafter\")",
+    "declared": [
+      "agent(?component/ApprovalPath(*)) : invoke : submit",
+      "env(?agent) : read : *",
+      "kv(?env) : read : out-A1-1.*",
+      "kv(?env) : read : out-A1-2.*",
+      "kv(?env) : write : out-A1.*"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "ApprovalPath(\"full2-cards\")",
+    "declared": [
+      "agent(?component/Journal(*)) : invoke : *",
+      "agent(?component/MailAdapter(*)) : invoke : deliver",
+      "env(?agent) : read : *"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "MailAdapter(\"full2-cards\")",
+    "declared": [
+      "agent(?component/Journal(*)) : invoke : *",
+      "agent(?component/MailAdapter(*)) : invoke : reconcile",
+      "config(?agent) : read : mail_credential",
+      "env(?agent) : read : *",
+      "network() : connect : 127.0.0.1:18081",
+      "network() : connect : 127.0.0.1:18082",
+      "secret(?env) : hold : *",
+      "secret(?env) : reveal : *"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  },
+  {
+    "agent": "Seeder(\"full2-cards\")",
+    "declared": [
+      "env(?agent) : read : *",
+      "kv(?env) : read : docs.*",
+      "kv(?env) : read : out-A1-1.*",
+      "kv(?env) : read : out-A1-2.*",
+      "kv(?env) : read : out-A1.*",
+      "kv(?env) : write : docs.*"
+    ],
+    "matches": true,
+    "ok": true,
+    "undeclared_cards": []
+  }
+]

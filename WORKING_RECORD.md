@@ -14,6 +14,16 @@ Jason asked whether Diamond Dog (the product name; source documents still say Or
 
 Author verification: the file renders; license coverage comes from REUSE.toml's `interfaces/**` rule plus an explicit SPDX comment. Not done here: the fake itself, which Jason decided the same day that Diamond Dog builds in its own thread, and any runtime code.
 
+## October 20, 2026 — Scenario A on Golem, deterministic variant
+
+Jason chose to build the deterministic Scenario A experiment on Golem. Built under `experiment/`: the shared reference implementation (`shared/orca-ref`), the mock mail service, the Golem 1.6.0 component (journal writer, supervisor, activity coordinators, processors, drafter, approval path, mail adapter), and the harness with failure injection and facilitator controls. Out of scope and not built: the AI participant, the conventional baseline, any OrcaOS runtime or spec, and promotion.
+
+Result: the build passed all seven acceptance tests and the P1/P2 revocation race (20 repetitions per crash or race test, 100 for the budget race) under the assumptions in `experiment/results/2026-10-20-golem/record.json`. That is a conformance result, not a security claim. Golem findings that change how the plan's configuration rules can be followed are in `experiment/README.md` (Findings): installed cards narrow rather than add, so children cannot hold cards derived from the parent's and rule 4's cascade is not achievable as written; key-value grants are whole-bucket or exact-key; a secret grant cannot be narrowed to one secret; quotas are invocation-scoped; Golem resends in-flight HTTP on recovery, which the adapter stops with a custom durable operation; processors ran as agents, not tools.
+
+Verification: `cargo test -p orca-ref` (18 tests), the full suite, card lists before and after, `reuse lint`. A fresh-context reviewer read the authorization and recovery slice; two major findings (recipient not checked at mint; test 7 timing window) and four minor ones were fixed before the recorded run, and one minor (the journal trusts the caller-named source) remains open as documented. Scorecard (tokei 12.1.2): 1,126 counted code lines and 170 configuration lines; the adapter splits 73% reusable, 27% mock-mail-specific.
+
+Next: the conventional baseline, the parity review, performance measurements, and the hands-on evaluation on this build's facilitator controls. PR #5 on branch `claude/scenario-a-golem-ovke1m`; merge belongs to Jason.
+
 ## October 11, 2026 — Readable code, v3.1.4
 
 Applied Jason’s queued General Management request during the regular documentation review: tasteful whitespace between distinct logical blocks, closely related statements kept together, and respect for existing formatters/linting and language idioms. Generated/minified code excluded; focused improvements to touched code only. No behavior changes, source-formatting campaign, checklist, review gate or formatter mandate. Updated guide, identical entry points and optional handoff prompt; aligned current companion version labels. Prior scaffold preserved in `Scaffold Policy Archive/before-v3.1.4-20261011`. Author verification covers affected text, entry-point parity, local links, whitespace and unchanged adapter/settings hashes. Central edits are complete; project adoption and draft PR delivery remain separately tracked in the weekly review state.

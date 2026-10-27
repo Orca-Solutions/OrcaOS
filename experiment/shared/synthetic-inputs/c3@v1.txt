@@ -1,0 +1,6 @@
+SYNTHETIC CONTRACT C3 (fabricated test data; no real parties)
+Parties: Fabrikam Sample Logistics and Example Holdings
+Term: 2026-09-01 to 2029-08-31
+Value: 3,100 test-dollars per month
+Renewal: automatic for three years unless cancelled 90 days before the end
+Payment: monthly in advance
