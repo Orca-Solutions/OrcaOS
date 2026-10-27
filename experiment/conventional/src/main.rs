@@ -43,6 +43,8 @@ async fn ctl(run: &str, op: &str, rest: &[String]) -> anyhow::Result<Value> {
             let mounts = containers::mounts(run, arg(0)).await?;
             json!(mounts.iter().map(|(_, inside, writable)| json!({ "path": inside, "writable": writable })).collect::<Vec<_>>())
         }
+        // The holder's container as Podman would create it, for the harness.
+        "probe" => containers::probe(run, arg(0)).await?,
         // Runs a participant directly, past its coordinator, as test 1 and
         // test 5 do; the container still mounts only its live grants.
         "participant" => containers::run(run, arg(0), &rest[1..]).await?,

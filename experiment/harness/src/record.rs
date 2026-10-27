@@ -126,37 +126,58 @@ pub fn check_native(platform: &Platform, run: &str) -> (bool, Value) {
     }
 }
 
-/// Compares what each participant's container would mount with the grant
-/// table the journal recorded at setup. A mount the table does not give
-/// stops the run.
+/// The plan's grant table as each participant's container should mount it:
+/// (path inside the container, writable). processor-2b holds nothing until
+/// test 5 replaces processor-2.
+const DECLARED_MOUNTS: [(&str, &[(&str, bool)]); 4] = [
+    ("processor-1", &[("/stores/docs/c1@v1", false), ("/stores/docs/c2@v1", false), ("/stores/out/A1.1", true)]),
+    ("processor-2", &[("/stores/docs/c3@v1", false), ("/stores/out/A1.2", true)]),
+    ("processor-2b", &[]),
+    ("drafter", &[("/stores/out/A1.1", false), ("/stores/out/A1.2", false), ("/stores/out/A1/draft", true)]),
+];
+
+/// Creates each participant's container as the platform would, without
+/// starting it, and compares what Podman reports with the plan's grant table:
+/// every mount, its source in the run's stores, no network, a read-only root,
+/// no added capabilities and no privilege escalation. Anything else stops the
+/// run.
 fn check_mounts(c: &Conventional, run: &str) -> (bool, Value) {
-    let export: Value = c.ctl(run, "export", &[]).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    let stores = c.stores.join(run).display().to_string();
     let mut ok = true;
     let mut rows = Vec::new();
 
-    for holder in ["processor-1", "processor-2", "processor-2b", "drafter"] {
-        let mut declared: Vec<Value> = export["journal"]["grants"]
-            .as_object()
+    for (holder, declared) in DECLARED_MOUNTS {
+        let probe: Value = c.ctl(run, "probe", &[holder]).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let host = &probe["HostConfig"];
+
+        let mut expected: Vec<Value> = declared.iter().map(|(path, rw)| json!({ "path": path, "writable": rw })).collect();
+        let mut mounted: Vec<Value> = probe["Mounts"]
+            .as_array()
             .into_iter()
             .flatten()
-            .filter(|(_, g)| g["holder"] == holder)
-            .filter_map(|(_, g)| {
-                let object = g["object"].as_str().unwrap_or_default();
-                let path = if object.starts_with("out/") { format!("/stores/{object}") } else { format!("/stores/docs/{object}") };
-                match g["capability"].as_str() {
-                    Some("read") => Some(json!({ "path": path, "writable": false })),
-                    Some("append" | "write") => Some(json!({ "path": path, "writable": true })),
-                    _ => None,
-                }
-            })
+            .map(|m| json!({ "path": m["Destination"], "writable": m["RW"] }))
             .collect();
-        let mut mounted = c.mounts(run, holder).ok().and_then(|m| m.as_array().cloned()).unwrap_or_default();
-        declared.sort_by_key(|m| m.to_string());
+        expected.sort_by_key(|m| m.to_string());
         mounted.sort_by_key(|m| m.to_string());
+        let sources_in_run = probe["Mounts"].as_array().into_iter().flatten().all(|m| {
+            let inside = m["Destination"].as_str().unwrap_or_default().trim_start_matches("/stores");
+            m["Source"].as_str() == Some(&format!("{stores}{inside}"))
+        });
 
-        let row_ok = mounted == declared;
+        let flags = json!({
+            "network": host["NetworkMode"],
+            "read_only_root": host["ReadonlyRootfs"],
+            "capabilities_added": host["CapAdd"],
+            "security_options": host["SecurityOpt"],
+        });
+        let confined = host["NetworkMode"] == "none"
+            && host["ReadonlyRootfs"] == true
+            && host["CapAdd"].as_array().is_none_or(Vec::is_empty)
+            && host["SecurityOpt"].as_array().is_some_and(|o| o.iter().any(|x| x == "no-new-privileges"));
+
+        let row_ok = !probe.is_null() && mounted == expected && sources_in_run && confined;
         ok &= row_ok;
-        rows.push(json!({ "holder": holder, "declared": declared, "mounted": mounted, "ok": row_ok }));
+        rows.push(json!({ "holder": holder, "declared": expected, "mounted": mounted, "sources_in_run": sources_in_run, "container": flags, "ok": row_ok }));
     }
     (ok, json!(rows))
 }

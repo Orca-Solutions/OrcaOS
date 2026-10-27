@@ -8,6 +8,10 @@
 //! or write grant. The grants are read from the journal at the moment the
 //! container starts, so a revoked or expired grant mounts nothing.
 //!
+//! A running container keeps the mounts it started with, so after every
+//! revocation, cancellation or close the supervisor stops any container whose
+//! holder's live grants have changed since it started.
+//!
 //! Wasmtime traces every WASI call it serves. The trace goes beside the run's
 //! stores, out of the participants' reach, where the inspector reads the
 //! refused calls.
@@ -64,17 +68,47 @@ pub async fn mounts(run: &str, holder: &str) -> anyhow::Result<Vec<(PathBuf, Str
     Ok(mounts)
 }
 
-pub async fn run(run: &str, holder: &str, args: &[String]) -> anyhow::Result<Value> {
-    let mut command = Command::new("podman");
-    command.args(["run", "--rm", "--network=none", "--read-only", "--cap-drop=all", "--security-opt=no-new-privileges"]);
-    command.args(["--label", &format!("orca.run={run}"), "--label", &format!("orca.holder={holder}")]);
-    command.args(["--env", "WASMTIME_LOG=wasmtime_wasi=trace", "--env", "RUST_LIB_BACKTRACE=0"]);
+/// A digest of what a container mounts, kept as a label so a container can
+/// be compared with its holder's grants later.
+fn digest(mounts: &[(PathBuf, String, bool)]) -> String {
+    let mut listed: Vec<String> = mounts.iter().map(|(_, inside, writable)| format!("{inside}:{writable}")).collect();
+    listed.sort();
+    orca_ref::binding::sha256_hex(listed.join(",").as_bytes())
+}
 
-    for (host, inside, writable) in mounts(run, holder).await? {
-        let mode = if writable { "rw" } else { "ro" };
-        command.arg("--volume").arg(format!("{}:{inside}:{mode}", host.display()));
+/// The `podman` arguments for one participant container, after the verb.
+async fn container(run: &str, holder: &str, args: &[String]) -> anyhow::Result<Vec<String>> {
+    let mounts = mounts(run, holder).await?;
+    let mut command: Vec<String> = ["--network=none", "--read-only", "--cap-drop=all", "--security-opt=no-new-privileges"].map(String::from).to_vec();
+    command.extend(["--label".into(), format!("orca.run={run}"), "--label".into(), format!("orca.holder={holder}")]);
+    command.extend(["--label".into(), format!("orca.mounts={}", digest(&mounts))]);
+    command.extend(["--env", "WASMTIME_LOG=wasmtime_wasi=trace", "--env", "RUST_LIB_BACKTRACE=0"].map(String::from));
+
+    for (host, inside, writable) in &mounts {
+        let mode = if *writable { "rw" } else { "ro" };
+        command.extend(["--volume".into(), format!("{}:{inside}:{mode}", host.display())]);
     }
-    let output = command.arg(image()).args(args).output().await?;
+    command.push(image());
+    command.extend(args.iter().cloned());
+    Ok(command)
+}
+
+/// Creates the holder's container without starting it and returns what
+/// Podman says about it, so the harness can check the real configuration.
+pub async fn probe(run: &str, holder: &str) -> anyhow::Result<Value> {
+    let created = Command::new("podman").arg("create").args(container(run, holder, &[]).await?).output().await?;
+    if !created.status.success() {
+        anyhow::bail!("podman create: {}", String::from_utf8_lossy(&created.stderr).trim());
+    }
+    let id = String::from_utf8_lossy(&created.stdout).trim().to_string();
+    let inspected = Command::new("podman").args(["inspect", &id]).output().await?;
+
+    Command::new("podman").args(["rm", &id]).output().await?;
+    Ok(serde_json::from_slice::<Value>(&inspected.stdout)?[0].clone())
+}
+
+pub async fn run(run: &str, holder: &str, args: &[String]) -> anyhow::Result<Value> {
+    let output = Command::new("podman").args(["run", "--rm"]).args(container(run, holder, args).await?).output().await?;
 
     let traces = stores(run).join("traces");
     std::fs::create_dir_all(&traces)?;
@@ -86,16 +120,20 @@ pub async fn run(run: &str, holder: &str, args: &[String]) -> anyhow::Result<Val
     Ok(report.unwrap_or_else(|| json!({ "error": format!("no report; exit {}", output.status) })))
 }
 
-/// Stops every container the holder still has running in this run.
-pub async fn stop(run: &str, holder: &str) -> anyhow::Result<Vec<String>> {
-    let listed = Command::new("podman")
-        .args(["ps", "--quiet", "--filter", &format!("label=orca.run={run}"), "--filter", &format!("label=orca.holder={holder}")])
-        .output()
-        .await?;
-    let ids: Vec<String> = String::from_utf8_lossy(&listed.stdout).split_whitespace().map(str::to_string).collect();
+/// Stops every container in the run whose holder's live grants no longer
+/// give what it started with.
+pub async fn stop_narrowed(run: &str) -> anyhow::Result<Vec<String>> {
+    let format = r#"{{.ID}}|{{index .Labels "orca.holder"}}|{{index .Labels "orca.mounts"}}"#;
+    let listed = Command::new("podman").args(["ps", "--filter", &format!("label=orca.run={run}"), "--format", format]).output().await?;
+    let mut stopped = Vec::new();
 
-    if !ids.is_empty() {
-        Command::new("podman").arg("kill").args(&ids).status().await?;
+    for line in String::from_utf8_lossy(&listed.stdout).lines() {
+        let parts: Vec<&str> = line.split('|').collect();
+        let [id, holder, started] = parts[..] else { continue };
+        if digest(&mounts(run, holder).await?) != started {
+            Command::new("podman").args(["kill", id]).output().await?;
+            stopped.push(id.to_string());
+        }
     }
-    Ok(ids)
+    Ok(stopped)
 }

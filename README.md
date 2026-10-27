@@ -19,11 +19,11 @@ Diamond Dog is in development. The design is written down, a first experiment ha
 | Provisional contract | [interfaces/diamond-dog/](interfaces/diamond-dog/) | The ten surfaces that products built on top (first, Orca Keel) pin against, each versioned on its own, plus an HTTP binding and a fixture format. Provisional until the experiment's results are in. |
 | The fake Diamond Dog | [fake/](fake/README.md) | A local Rust test double that answers the contract over HTTP, refuses what the contract says to refuse and writes the ledger. CI runs its fixtures and lints on every change. It keeps nothing durable, isolates nothing and checks no identity. |
 | Scenario A on Golem | [experiment/](experiment/README.md) | The first experiment: one bounded scenario (three contracts, one message, your sign-off) built on a restricted Golem 1.6.0. It passed the seven acceptance tests on 2026-10-20. That is a conformance result, not a security claim. |
+| Conventional baseline for Scenario A | [experiment/conventional/](experiment/conventional/README.md) | The same scenario on Temporal, PostgreSQL, Podman and Wasmtime, run by the same harness and tests. BASELINE-RESULT Golem needed about as much custom code as this baseline for grants, recovery and inspection, so it misses the plan's effort threshold. |
 | Sensor observation interface 0.1 | [interfaces/sensor-observation/](interfaces/sensor-observation/README.md) | A draft of how a small device publishes readings and coverage. No implementation has shipped. |
 
 **In progress, not on `main`:**
 
-- A conventional baseline for Scenario A, the comparison the Golem build is measured against.
 - An experimental runtime skeleton in Rust: the fake's surfaces on top of its own enforcement core.
 
 **Planned, not built:**

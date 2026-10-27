@@ -9,7 +9,8 @@
 #
 #   stack.sh init    create the PostgreSQL cluster, database and schema (once)
 #   stack.sh start   start whatever is not running and wait until it answers
-#   stack.sh kill    SIGKILL every platform process (the crash tests)
+#   stack.sh kill    SIGKILL every platform process and participant container
+#                    (the crash tests)
 #
 # Run from experiment/. Scorecard: excluded (operations; its steps are
 # reported under operational burden).
@@ -88,6 +89,7 @@ kill)
     # runuser forks the postmaster; kill it and its backends too.
     pkill -9 -u postgres -f "$PGBIN/postgres" 2>/dev/null || true
     pkill -9 -f "temporal server start-dev" 2>/dev/null || true
+    podman ps --quiet --filter label=orca.run | xargs -r podman kill >/dev/null 2>&1 || true
     # PostgreSQL refuses to start while the pid in either of its lock files
     # still exists, and a killed process stays a zombie until this host's
     # init reaps it. Wait for the postmaster to die, then remove both.
@@ -99,6 +101,10 @@ kill)
             [ -z "$state" ] || [ "$state" = Z ] && break
             sleep 0.1
         done
+        if [ -n "$state" ] && [ "$state" != Z ]; then
+            echo "the postmaster ($pid) is still running; leaving its lock files" >&2
+            exit 1
+        fi
     fi
     rm -f "$lock" /var/run/postgresql/.s.PGSQL.5433.lock
     ;;

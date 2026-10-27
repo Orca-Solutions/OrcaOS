@@ -7,11 +7,19 @@
 //! from `open-at`. The inspector journals each one with the container's file
 //! system as its source, as it does Golem's oplog denials.
 //!
+//! The trace shares the container's stderr with the participant, so a
+//! participant could print lines that look like it. It cannot remove
+//! Wasmtime's own record of it opening stderr, so a trace in which the
+//! participant opened stderr is not trusted and yields no denials.
+//!
 //! Scorecard: counted. Category: inspection (conventional build only).
 //! Tests: 1.
 
 /// Refused opens in a Wasmtime trace: (operation, object, reason) each.
 pub fn denials(trace: &str) -> Vec<(String, String, String)> {
+    if trace.lines().any(|l| l.contains("function=\"get-stderr\"")) {
+        return Vec::new();
+    }
     let mut denials = Vec::new();
     let mut open: Option<(String, String)> = None;
     let mut cause = String::new();

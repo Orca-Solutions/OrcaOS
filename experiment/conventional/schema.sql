@@ -45,3 +45,14 @@ CREATE TABLE IF NOT EXISTS proposals (
     PRIMARY KEY (run, proposal_id),
     UNIQUE (run, submission)
 );
+
+-- Authorizations minted for delivery, written in the same transaction as
+-- the mint. The approval service starts each one's delivery workflow and
+-- marks it started; on restart it starts any it had not.
+CREATE TABLE IF NOT EXISTS deliveries (
+    run text,
+    authorization_id text,
+    delivery jsonb NOT NULL,
+    started boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (run, authorization_id)
+);

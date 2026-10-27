@@ -4,7 +4,9 @@
 //! Acts for principal-1: opens the activities, records the grant table,
 //! revokes, cancels, closes and replaces participants. Every change is a
 //! journal command; the container runner reads the journal's live grants
-//! each time it starts a participant, so a revoked grant mounts nothing.
+//! each time it starts a participant, so a revoked grant mounts nothing, and
+//! after a change that can narrow, any running container that would now
+//! mount less is stopped.
 //!
 //! Scorecard: counted. Category: grants. Tests: 3, 5, 7b; setup for all.
 
@@ -99,22 +101,28 @@ pub async fn grant(run: &str, grant_id: &str, holder: &str, activity: &str, capa
     Ok(summary(&apply(run, &principal(), command).await?))
 }
 
+/// Journals a change that can narrow, then stops what it narrowed.
+async fn narrow(run: &str, command: Command) -> anyhow::Result<Value> {
+    let journal = summary(&apply(run, &principal(), command).await?);
+    let stopped = crate::containers::stop_narrowed(run).await?;
+    Ok(json!({ "journal": journal, "native": { "stopped_containers": stopped } }))
+}
+
 pub async fn revoke(run: &str, grant_id: &str) -> anyhow::Result<Value> {
-    Ok(summary(&apply(run, &principal(), Command::Revoke { grant_id: grant_id.into() }).await?))
+    narrow(run, Command::Revoke { grant_id: grant_id.into() }).await
 }
 
 pub async fn cancel(run: &str, activity: &str) -> anyhow::Result<Value> {
-    Ok(summary(&apply(run, &principal(), Command::Cancel { activity: activity.into() }).await?))
+    narrow(run, Command::Cancel { activity: activity.into() }).await
 }
 
 pub async fn close(run: &str, activity: &str) -> anyhow::Result<Value> {
-    Ok(summary(&apply(run, &principal(), Command::Close { activity: activity.into() }).await?))
+    narrow(run, Command::Close { activity: activity.into() }).await
 }
 
 /// Replaces a participant: journals the revocation of the old holder's grants
 /// and equivalent grants for the new holder, then natively stops any container
-/// the old holder still has running, since a running container keeps the
-/// mounts it started with.
+/// the old holder still has running.
 pub async fn replace(run: &str, activity: &str, old_holder: &str, new_holder: &str) -> anyhow::Result<Value> {
     let mut out = Vec::new();
 
@@ -135,7 +143,7 @@ pub async fn replace(run: &str, activity: &str, old_holder: &str, new_holder: &s
         out.push(summary(&apply(run, &Source::service("activity-supervisor"), command).await?));
     }
 
-    let stopped = crate::containers::stop(run, old_holder).await?;
+    let stopped = crate::containers::stop_narrowed(run).await?;
     Ok(json!({ "journal": out, "native": { "stopped_containers": stopped } }))
 }
 

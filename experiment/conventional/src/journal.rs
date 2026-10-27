@@ -20,8 +20,9 @@ use tokio_postgres::Transaction;
 
 use crate::common::{db, now_ms};
 
-/// Locks the run's journal row until the transaction ends.
-async fn lock(tx: &Transaction<'_>, run: &str) -> anyhow::Result<Writer> {
+/// Locks the run's journal row until the transaction ends. A service that
+/// must commit its own rows with a journal command takes the lock itself.
+pub async fn lock(tx: &Transaction<'_>, run: &str) -> anyhow::Result<Writer> {
     tx.execute(
         "INSERT INTO journals (run, writer) VALUES ($1, $2) ON CONFLICT DO NOTHING",
         &[&run, &Json(Writer::new())],
@@ -32,7 +33,7 @@ async fn lock(tx: &Transaction<'_>, run: &str) -> anyhow::Result<Writer> {
     Ok(row.get::<_, Json<Writer>>(0).0)
 }
 
-async fn store(tx: &Transaction<'_>, run: &str, writer: &Writer) -> anyhow::Result<()> {
+pub async fn store(tx: &Transaction<'_>, run: &str, writer: &Writer) -> anyhow::Result<()> {
     tx.execute("UPDATE journals SET writer = $2 WHERE run = $1", &[&run, &Json(writer)]).await?;
     Ok(())
 }

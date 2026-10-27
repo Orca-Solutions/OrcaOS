@@ -7,11 +7,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 The deterministic Scenario A experiment from the experiment plan (written when Diamond Dog was still called OrcaOS), built on a properly restricted Golem 1.6.0. It covers the mock mail service, the deterministic processors and drafter, the trusted mail adapter, the failure-injection harness with facilitator controls, and the seven acceptance tests plus the test 3 variant (revocation during the enforcement check at P1 and P2).
 
-It does not cover the AI participant, the conventional baseline or any Diamond Dog runtime. Results are stated narrowly: a pass means Golem plus the code here passed this conformance suite under the recorded assumptions. It does not mean the build is secure.
+It does not cover the AI participant or any Diamond Dog runtime. The conventional baseline it is measured against is a separate build in [conventional/](conventional/README.md), run by the same harness with the same tests. Results are stated narrowly: a pass means Golem plus the code here passed this conformance suite under the recorded assumptions. It does not mean the build is secure.
 
 - Results: [results/2026-10-20-golem/summary.md](results/2026-10-20-golem/summary.md), with the reproducibility record, card lists, every repetition, the journals and the mock service logs next to it.
 - Scorecard: [Custom machinery](#custom-machinery) below.
 - Findings about Golem: [Findings](#findings) below. Several of them change how the plan's configuration rules could be followed.
+- Compared with the conventional baseline: [conventional/README.md, Early-exit check](conventional/README.md#early-exit-check). Golem needed about as much custom code as the baseline for grants, recovery and inspection (90%, 118% and 98% of it), so it misses the effort threshold; it meets it only for approvals (46%).
 
 ## Results, 2026-10-20
 
@@ -45,7 +46,8 @@ In 7a to 7d the mock's attempt log, written before deduplication, showed no subm
 | `shared/synthetic-inputs/` | Fabricated contracts `c1@v1`, `c2@v1`, `c3@v1` and the decoys `c1@v2` and `tax-return-2025`. No real personal data. | Excluded |
 | `mock-mail/` | The mock mail service. Port 18081 speaks the mail contract; port 18082 is the harness's control port (logs, fault switches, checkpoints). | Excluded (shared) |
 | `golem/` | The Golem application: `golem.yaml` (cards, retry policy) and one component with ten agent types. | Counted, per file tag |
-| `harness/` | Suite runner, facilitator controls, inspector, reproducibility record and card check. | Excluded, except `inspector.rs` |
+| `conventional/` | The conventional baseline: the same scenario on Temporal, PostgreSQL, Podman and Wasmtime, with its own README, findings and scorecard. | Counted, per file tag (in its README) |
+| `harness/` | Suite runner and facilitator controls for either build (`ORCA_PLATFORM=golem` or `conventional`), inspector, reproducibility record and native-authority check (card lists or mounts). | Excluded, except `inspector.rs` (and `wasmtime_trace.rs`, counted for the conventional build) |
 | `results/` | One directory per recorded suite run. | Not code |
 
 Every counted file opens with a `Scorecard:` line naming its category and the tests it serves. The adapter files also say whether they are reusable for any adapter contract or specific to the mock mail contract.
@@ -104,7 +106,7 @@ cd ..
 ./target/debug/harness suite --reps 20 --race-reps 100 --prefix full1 --out results/<date>-golem
 ```
 
-The suite kills the Golem server with SIGKILL and restarts it for every crash repetition, so nothing else should be using that server. Tests 7a, 7b and 7d end by waiting for the 10-minute validity window to close and checking the certified not-started outcome; a full run takes about an hour and a half.
+The harness drives the Golem build unless `ORCA_PLATFORM=conventional` is set (see [conventional/README.md](conventional/README.md#running-it)). The suite kills the Golem server with SIGKILL and restarts it for every crash repetition, so nothing else should be using that server. Tests 7a, 7b and 7d end by waiting for the 10-minute validity window to close and checking the certified not-started outcome; a full run takes about an hour and a half.
 
 Facilitator controls for the hands-on evaluation are under `harness ctl RUN OP` (setup, process, show, approve, revoke, grant, cancel, close, replace, fault, clear, hold, release, crash, pending, journal), and `harness inspect RUN` prints the inspector's answers.
 
@@ -234,4 +236,4 @@ One fresh-context reviewer read the authorization and recovery slice (the refere
 
 ## What was not built
 
-The AI participant and its model-provider grant, the conventional baseline, promotion to the principal's workspace, the parity review of both builds, and the performance measurements (startup latency, peak memory, oplog growth, the no-controls baseline). The independent review of the enforcement design that the scorecard names is also outstanding; the code review above is narrower.
+The AI participant and its model-provider grant, promotion to the principal's workspace, the parity review of both builds, and the performance measurements (startup latency, peak memory, oplog growth, the no-controls baseline). The independent review of the enforcement design that the scorecard names is also outstanding; the code review above is narrower.

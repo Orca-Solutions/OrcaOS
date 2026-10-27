@@ -110,7 +110,7 @@ impl Suite<'_> {
 
         let native = match self.ctx.platform {
             Platform::Golem(_) => "Card lists matched golem.yaml",
-            Platform::Conventional(_) => "Mount lists matched the journal's grant table",
+            Platform::Conventional(_) => "Participant containers matched the plan's grant table and confinement",
         };
         let mut lines = vec![
             format!("# Scenario A on {}: acceptance results", self.ctx.platform.title()),
@@ -173,7 +173,7 @@ fn suite(args: &[String], platform: &Platform, mock: &Mock, single: Option<&str>
     // declaration (Golem's card lists, the conventional build's mounts).
     let (native, declaration) = match platform {
         Platform::Golem(_) => ("cards", "golem.yaml"),
-        Platform::Conventional(_) => ("mounts", "the grant table"),
+        Platform::Conventional(_) => ("mounts", "the plan's grant table and confinement"),
     };
     let card_run = format!("{prefix}-cards");
     let probe = Run::new(card_run.clone(), platform, mock);

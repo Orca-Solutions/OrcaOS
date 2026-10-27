@@ -8,12 +8,17 @@
 //! Scorecard: counted. Category: recovery. Tests: 2, 4, 7.
 //! Developer model: specific to the mock mail contract.
 
+use std::time::Duration;
+
 use orca_ref::{payload_hash, Message, StatusObservation, SubmitResult};
 use serde_json::{json, Value};
 
 use super::delivery::Contract;
 
 const SERVICE: &str = "http://127.0.0.1:18081";
+/// A call that has not answered by then is treated as no reply: Unknown for
+/// a submit, unavailable for a status check.
+const TIMEOUT: Duration = Duration::from_secs(10);
 /// The harness's control port; only the checkpoint hook below uses it.
 const CONTROL: &str = "http://127.0.0.1:18082";
 
@@ -55,6 +60,7 @@ impl Contract for MockMail {
             .post(format!("{SERVICE}/submit"))
             .bearer_auth(&self.credential)
             .header("x-orca-run", &self.run)
+            .timeout(TIMEOUT)
             .json(&body);
 
         match request.send().await {
@@ -81,7 +87,7 @@ impl Contract for MockMail {
     async fn status(&self, request_id: &str, not_after_ms: u64) -> StatusObservation {
         let url = format!("{SERVICE}/status/{request_id}?not_after_ms={not_after_ms}");
 
-        match self.http.get(url).header("x-orca-run", &self.run).send().await {
+        match self.http.get(url).header("x-orca-run", &self.run).timeout(TIMEOUT).send().await {
             Err(e) => StatusObservation::Unavailable { detail: e.to_string() },
             Ok(response) if response.status().as_u16() != 200 => StatusObservation::Unavailable {
                 detail: format!("HTTP {}", response.status().as_u16()),

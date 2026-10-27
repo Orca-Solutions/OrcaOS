@@ -103,12 +103,16 @@ impl MailAdapter {
     }
 }
 
-/// Heartbeats every second while `work` runs.
-async fn heartbeating<T>(ctx: &ActivityContext, work: impl Future<Output = T>) -> T {
+/// Heartbeats every second while `work` runs, and stops it if Temporal
+/// cancels the attempt, as it does once a heartbeat times out and a new
+/// attempt may already be running. Dropping `work` stops it at its next
+/// step, so a superseded attempt does not go on to submit.
+async fn heartbeating<T>(ctx: &ActivityContext, work: impl Future<Output = T>) -> Result<T, ActivityError> {
     tokio::pin!(work);
     loop {
         tokio::select! {
-            out = &mut work => return out,
+            out = &mut work => return Ok(out),
+            _ = ctx.cancelled() => return Err(ActivityError::cancelled()),
             _ = tokio::time::sleep(Duration::from_secs(1)) => {
                 let _ = ctx.record_heartbeat("alive".to_string()).await;
             }
@@ -127,7 +131,7 @@ impl MailAdapter {
         let adapter = Adapter { run: &d.run, name: ADAPTER, contract: &contract };
 
         let work = adapter.deliver(&d.activity, &d.authorization, d.expires_at_ms, &d.message, &delivery);
-        Ok(heartbeating(&ctx, work).await?)
+        Ok(heartbeating(&ctx, work).await??)
     }
 
     /// A scheduled status check, under the standing reconciliation grant:
