@@ -193,17 +193,36 @@ pub struct Consumed {
     pub request_id: String,
     pub authority: Value,
     pub grant: Option<String>,
+    /// What was consumed, so the adapter sends exactly that.
+    pub operation: String,
+    pub object: String,
+    pub payload_hash: String,
     _sealed: (),
 }
 
 impl Consumed {
-    pub(in crate::core) fn new(request_id: String, authority: Value, grant: Option<String>) -> Self {
+    pub(in crate::core) fn new(request_id: String, authority: Value, grant: Option<String>, operation: String, object: String, payload_hash: String) -> Self {
         Self {
             request_id,
             authority,
             grant,
+            operation,
+            object,
+            payload_hash,
             _sealed: (),
         }
+    }
+
+    /// Stops the runtime if an adapter is about to send something other than
+    /// what was consumed. Reaching it is a bug, never a caller's doing.
+    pub fn must_cover(&self, operation: &str, object: &str, payload_hash: &str) {
+        assert!(
+            self.operation == operation && self.object == object && self.payload_hash == payload_hash,
+            "fail-stop: {} was consumed for {} on {}, not for {operation} on {object} with this payload",
+            self.request_id,
+            self.operation,
+            self.object
+        );
     }
 }
 

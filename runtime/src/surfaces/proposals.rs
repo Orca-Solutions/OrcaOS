@@ -90,7 +90,8 @@ impl Runtime {
                 .evidence("claimed")
                 .detail(json!({ "payload_hash": payload_hash, "target": target, "matter": matter, "matter_app": matter_app, "needs_approval": needs })),
         );
-        if needs {
+        // A suspended activity stays suspended; one already waiting keeps waiting.
+        if needs && self.core.activity(&aid).is_some_and(|a| a.state() == ActivityState::Running) {
             self.set_state(&aid, ActivityState::Waiting, &format!("proposal {pid} waits on a member"), Source::service("approval path"));
         }
 

@@ -88,7 +88,7 @@ impl Core {
 
     pub fn next_id(&mut self, prefix: &str) -> String {
         let n = self.counters.entry(prefix.into()).or_insert(0);
-        *n += 1;
+        *n = n.checked_add(1).unwrap_or_else(|| panic!("fail-stop: the {prefix} ids are used up"));
         format!("{prefix}{n}")
     }
 
@@ -350,7 +350,10 @@ impl Core {
         if let Some(t) = basis.grant().and_then(|g| self.grants.get(g)).and_then(|g| g.expires_at) {
             expires_at = expires_at.min(t);
         }
-        if let Some(entry) = entry {
+        if let Some(mut entry) = entry {
+            let mut detail = entry.detail.take().unwrap_or_else(|| json!({}));
+            detail["authorization"] = json!(id);
+            entry.detail = Some(detail);
             self.journal(entry);
         }
 
@@ -445,6 +448,7 @@ impl Core {
         let authority = auth.basis.authority();
         let grant = auth.basis.grant().map(str::to_string);
         let (activity, adapter, payload_hash) = (auth.activity.clone(), auth.adapter.clone(), auth.payload_hash.clone());
+        let (operation, object) = (auth.operation.clone(), auth.object.clone());
 
         // The line names what the authorization covers, whatever the caller wrote.
         let mut entry = entry
@@ -471,7 +475,7 @@ impl Core {
             self.activities.get_mut(&activity).unwrap().used_grants.insert(gid.clone());
         }
 
-        Ok(Consumed::new(request_id, authority, grant))
+        Ok(Consumed::new(request_id, authority, grant, operation, object, payload_hash))
     }
 
     // ---- The factory reset ----
@@ -481,7 +485,7 @@ impl Core {
         self.activities.clear();
         self.grants.clear();
         self.authorizations.clear();
-        self.journal.wipe();
+        self.journal.wipe(&self.counters);
     }
 }
 

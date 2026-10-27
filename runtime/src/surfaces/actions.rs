@@ -142,8 +142,10 @@ impl Runtime {
         })
     }
 
-    /// The adapter dispatches once and writes the receipt.
+    /// The adapter dispatches once and writes the receipt. It sends only what
+    /// the consumption covered: anything else is a bug, and stops the runtime.
     pub fn dispatch(&mut self, aid: &str, operation: &str, object: &str, payload: &Value, cleared: Consumed, detail: Value) -> Value {
+        cleared.must_cover(operation, object, &hash(payload));
         let act = self.core.activity(aid).unwrap().clone();
         let handle = object.split_once(':').map(|(_, h)| h.to_string()).unwrap_or_else(|| object.into());
         let rid = cleared.request_id.clone();

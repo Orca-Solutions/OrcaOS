@@ -70,7 +70,8 @@ impl Runtime {
 
         let adapter = if api { "fetch adapter" } else { "bounded browser" };
         let plain = format!("{} fetched {host}{path} through the {adapter} under grant {} ({status}).", self.app_name(&act.app), g.id);
-        self.journal(
+        self.core.use_for_read(
+            &g.id,
             Entry::new("fetch", Source::external(&host, adapter), plain)
                 .app(&act.app)
                 .activity(&aid)
@@ -138,13 +139,17 @@ impl Runtime {
         let over_activity = act.cost_allowance_cents.is_some_and(|c| act.cost_cents + price > c);
         if over_app || over_activity {
             let why = if over_app { "the app's spend allowance is paused or spent" } else { "the activity's cost allowance is spent" };
-            self.set_state(&aid, ActivityState::Waiting, why, Source::service("supervisor"));
+            self.touch(&aid);
+            if self.core.activity(&aid).is_some_and(|a| a.state() == ActivityState::Running) {
+                self.set_state(&aid, ActivityState::Waiting, why, Source::service("supervisor"));
+            }
             let code = if over_app { "spend_ceiling_reached" } else { "cost_allowance_spent" };
             return Err(r(code, why.into()).into());
         }
 
         let payload = json!({ "provider": provider, "categories": categories, "content": content });
         let cleared = self.enforce(&aid, "provider.disclose", &object, &payload, opt_s(body, "proposal"), opt_s(body, "grant"))?;
+        cleared.must_cover("provider.disclose", &object, &hash(&payload));
 
         let conversation = format!("conv-{aid}");
         self.mock.providers.entry(provider.clone()).or_insert(crate::mock::Provider { price_cents: price, disclosures: Vec::new() }).disclosures.push(json!({

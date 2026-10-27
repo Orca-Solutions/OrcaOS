@@ -13,8 +13,16 @@
 //! of the line before it. The chain makes an edit, a reorder or a dropped
 //! line in the middle of the file show up when the journal is opened. It is
 //! tamper-evident, not tamper-proof: whoever can rewrite the whole file can
-//! rewrite the chain too.
+//! rewrite the chain too, and lines cut from the end leave a shorter chain
+//! that still verifies. Catching that needs the chain's head kept somewhere
+//! else, which this skeleton does not do yet.
+//!
+//! Beside the journal sits one more small file, `<journal>.ids`: the highest
+//! id of each kind handed out before a wipe. A wipe empties the journal, and
+//! ids must still never repeat, because outside systems remember request
+//! identifiers across it.
 
+use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -44,6 +52,8 @@ pub struct Opened {
     /// A final line that was cut off mid-write: it never committed, so it
     /// was discarded.
     pub torn_tail_discarded: bool,
+    /// The highest id of each kind handed out before a wipe.
+    pub id_floors: BTreeMap<String, u64>,
 }
 
 pub struct Journal {
@@ -73,7 +83,8 @@ impl Journal {
             .open(path)
             .map_err(|e| format!("could not open the journal {}: {e}", path.display()))?;
 
-        let (mut journal, opened, committed_bytes) = Self::read(&file)?;
+        let (mut journal, mut opened, committed_bytes) = Self::read(&file)?;
+        opened.id_floors = read_floors(&floors_path(path))?;
         if opened.torn_tail_discarded {
             file.set_len(committed_bytes).map_err(|e| format!("could not discard the torn final line: {e}"))?;
             file.sync_all().map_err(|e| format!("could not flush the journal: {e}"))?;
@@ -98,20 +109,23 @@ impl Journal {
 
         let mut reader = BufReader::new(file);
         loop {
-            let mut raw = String::new();
-            let read = reader.read_line(&mut raw).map_err(|e| format!("could not read the journal: {e}"))?;
+            let mut raw = Vec::new();
+            let read = reader.read_until(b'\n', &mut raw).map_err(|e| format!("could not read the journal: {e}"))?;
             if read == 0 {
                 break;
             }
 
-            // A line without its newline was cut off before it was flushed:
-            // it never committed, and nothing acted on it.
-            if !raw.ends_with('\n') {
+            // A line without its newline was cut off before it was flushed,
+            // perhaps inside a character: it never committed, and nothing
+            // acted on it.
+            if raw.last() != Some(&b'\n') {
                 opened.torn_tail_discarded = true;
                 break;
             }
 
-            let line: Line = serde_json::from_str(raw.trim_end()).map_err(|e| format!("journal line {} cannot be read: {e}", journal.entries.len() + 1))?;
+            let n = journal.entries.len() + 1;
+            let text = std::str::from_utf8(&raw).map_err(|_| format!("journal line {n} is not UTF-8"))?;
+            let line: Line = serde_json::from_str(text.trim_end()).map_err(|e| format!("journal line {n} cannot be read: {e}"))?;
             journal.verify(&line)?;
             journal.head = line.hash;
             journal.entries.push(line.entry);
@@ -172,15 +186,38 @@ impl Journal {
     }
 
     /// The factory reset (G-9): the journal is emptied, and the reset itself
-    /// leaves no line.
-    pub fn wipe(&mut self) {
-        if let Some((path, file)) = &mut self.file
-            && let Err(e) = file.set_len(0).and_then(|_| file.sync_all())
-        {
-            panic!("fail-stop: the journal {} could not be wiped ({e})", path.display());
+    /// leaves no line. The ids handed out so far are kept first, beside the
+    /// journal, so none is handed out again after a restart.
+    pub fn wipe(&mut self, id_floors: &BTreeMap<String, u64>) {
+        if let Some((path, file)) = &mut self.file {
+            let floors = floors_path(path);
+            let kept = serde_json::to_vec(id_floors).map_err(std::io::Error::other).and_then(|text| {
+                let tmp = floors.with_extension("ids.tmp");
+                let mut f = File::create(&tmp)?;
+                f.write_all(&text)?;
+                f.sync_all()?;
+                std::fs::rename(&tmp, &floors)
+            });
+            if let Err(e) = kept.and_then(|_| file.set_len(0)).and_then(|_| file.sync_all()) {
+                panic!("fail-stop: the journal {} could not be wiped ({e})", path.display());
+            }
         }
         self.entries.clear();
         self.head = GENESIS.into();
+    }
+}
+
+fn floors_path(journal: &Path) -> PathBuf {
+    let mut name = journal.as_os_str().to_owned();
+    name.push(".ids");
+    PathBuf::from(name)
+}
+
+fn read_floors(path: &Path) -> Result<BTreeMap<String, u64>, String> {
+    match std::fs::read(path) {
+        Ok(text) => serde_json::from_slice(&text).map_err(|e| format!("{} cannot be read: {e}", path.display())),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(BTreeMap::new()),
+        Err(e) => Err(format!("could not read {}: {e}", path.display())),
     }
 }
 

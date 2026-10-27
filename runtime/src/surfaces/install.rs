@@ -131,12 +131,14 @@ impl Runtime {
             grants.push(gid);
         }
 
-        // Held install grants are shown again; the ones the member confirms go live.
+        // Held install grants are shown again; the ones the member confirms go
+        // live. Only a grant's own principal can confirm it; anyone else's stays held.
         let confirm = strings(body, "confirm_held");
         let held: Vec<Grant> = self.core.grants().filter(|g| g.app == app_id && g.state() == GrantState::Held).cloned().collect();
         let mut still_held = Vec::new();
         for g in held {
-            if confirm.contains(&g.id) || confirm.iter().any(|c| c == "all") {
+            let named = confirm.contains(&g.id) || confirm.iter().any(|c| c == "all");
+            if named && g.principal == member {
                 let plain = format!("{} confirmed install grant {} ({} on {}) again.", self.member_name(&member), g.id, g.operation, g.object);
                 let entry = Entry::new("grant_confirmed", Source::principal(&member), plain)
                     .app(&app_id)

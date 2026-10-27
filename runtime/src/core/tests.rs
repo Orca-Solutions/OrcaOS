@@ -5,7 +5,7 @@
 //! lifecycle's moves, and consume-if-live against revocation, reuse, expiry
 //! and a closing activity.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -151,14 +151,36 @@ fn a_torn_final_line_never_committed() {
 }
 
 #[test]
-fn a_wipe_leaves_an_empty_journal_file() {
+fn a_torn_tail_inside_a_character_is_discarded_too() {
+    let path = scratch("torn-utf8");
+    let (mut journal, _) = Journal::open(&path).unwrap();
+    journal.append(line("line 1"));
+    drop(journal);
+
+    let committed = std::fs::metadata(&path).unwrap().len();
+    // The first two bytes of a three-byte character, and no newline.
+    std::fs::OpenOptions::new().append(true).open(&path).unwrap().write_all(&[b'{', b'"', 0xE2, 0x82]).unwrap();
+
+    let (mut journal, opened) = Journal::open(&path).unwrap();
+    assert!(opened.torn_tail_discarded);
+    assert_eq!(opened.lines, 1);
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), committed);
+    assert_eq!(journal.append(line("line 2")), 2);
+}
+
+#[test]
+fn a_wipe_leaves_an_empty_journal_and_keeps_the_id_floors() {
     let path = scratch("wipe");
     let (mut journal, _) = Journal::open(&path).unwrap();
     journal.append(line("line 1"));
-    journal.wipe();
+    journal.wipe(&BTreeMap::from([("auth-".to_string(), 7), ("A".to_string(), 3)]));
     assert_eq!(std::fs::metadata(&path).unwrap().len(), 0);
     assert_eq!(journal.append(line("after")), 1);
     assert_eq!(Journal::verify_file(&path).unwrap().lines, 1);
+
+    let (_, opened) = Journal::open(&path).unwrap();
+    assert_eq!(opened.id_floors.get("auth-"), Some(&7));
+    assert_eq!(opened.id_floors.get("A"), Some(&3));
 }
 
 // ---- The lifecycle ----

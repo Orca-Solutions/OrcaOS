@@ -24,7 +24,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde_json::{Value, json};
+use serde_json::json;
 
 use super::Core;
 use super::journal::Opened;
@@ -43,8 +43,6 @@ pub struct Recovery {
     pub activities_closed: Vec<String>,
 }
 
-const ID_PREFIXES: [&str; 8] = ["auth-", "A", "G", "P", "R", "S", "C", "N"];
-
 impl Core {
     /// Applies the restart rules to the journal just opened. Returns what it did.
     pub fn recover(&mut self, opened: &Opened) -> Recovery {
@@ -54,16 +52,17 @@ impl Core {
             torn_tail_discarded: opened.torn_tail_discarded,
             ..Default::default()
         };
+
+        // Ids are never reused across a restart, or across a wipe: a request
+        // identifier that names a new attempt must not name an old one.
+        for (prefix, n) in &opened.id_floors {
+            self.seed_counter(prefix, *n);
+        }
+        for (prefix, n) in entries.iter().filter_map(minted_id) {
+            self.seed_counter(prefix, n);
+        }
         if entries.is_empty() {
             return report;
-        }
-
-        // Ids are never reused across a restart: a request identifier that
-        // names a new attempt must not name an old one.
-        for e in &entries {
-            for token in id_tokens(e) {
-                self.seed_counter(&token);
-            }
         }
 
         let restart = "Diamond Dog restarted";
@@ -134,7 +133,7 @@ impl Core {
                 "revocation" | "grant_ended" => {
                     grants.entry(gid).and_modify(|g| g.0 = false);
                 }
-                "consumption" | "read" => {
+                "consumption" | "read" | "fetch" => {
                     let one_time = grants.get(&gid).is_some_and(|(_, line)| line.detail.as_ref().is_some_and(|d| d["kind"] == "one_time"));
                     if one_time {
                         grants.entry(gid).and_modify(|g| g.0 = false);
@@ -187,35 +186,28 @@ impl Core {
         report
     }
 
-    fn seed_counter(&mut self, token: &str) {
-        for prefix in ID_PREFIXES {
-            let Some(rest) = token.strip_prefix(prefix) else { continue };
-            if rest.is_empty() || !rest.bytes().all(|b| b.is_ascii_digit()) {
-                continue;
-            }
-            if let Ok(n) = rest.parse::<u64>() {
-                let counter = self.counters.entry(prefix.into()).or_insert(0);
-                *counter = (*counter).max(n);
-            }
-            return;
-        }
+    fn seed_counter(&mut self, prefix: &str, n: u64) {
+        let counter = self.counters.entry(prefix.into()).or_insert(0);
+        *counter = (*counter).max(n);
     }
 }
 
-/// Every string in a line that might be an id, split at `:` so request
-/// identifiers and objects (`record:R3`) give up theirs too. Seeding from a
-/// string that only looks like an id costs a skipped number, nothing more.
-fn id_tokens(e: &Entry) -> Vec<String> {
-    let mut out = Vec::new();
-    collect(&serde_json::to_value(e).unwrap_or_default(), &mut out);
-    out
-}
-
-fn collect(v: &Value, out: &mut Vec<String>) {
-    match v {
-        Value::String(s) => out.extend(s.split(':').map(str::to_string)),
-        Value::Array(items) => items.iter().for_each(|i| collect(i, out)),
-        Value::Object(map) => map.values().for_each(|i| collect(i, out)),
-        _ => {}
-    }
+/// The id a line records the minting of, as its prefix and number. Only the
+/// field the minting call writes counts: an id named anywhere else (a
+/// caller's text, a payload, a reference to something minted earlier) never
+/// moves a counter.
+fn minted_id(e: &Entry) -> Option<(&'static str, u64)> {
+    let detail = |key: &str| e.detail.as_ref().and_then(|d| d[key].as_str());
+    let (prefix, id) = match e.kind.as_str() {
+        "activity" if detail("to") == Some("created") => ("A", e.activity.as_deref()?),
+        "grant" => ("G", e.grant.as_deref()?),
+        "proposal" => ("P", e.proposal.as_deref()?),
+        "authorization" | "consumption" => ("auth-", detail("authorization")?),
+        "record" | "answer" => ("R", e.object.as_deref()?.strip_prefix("record:")?),
+        "schedule" => ("S", detail("schedule")?),
+        "contribution" => ("C", detail("item")?),
+        "notification" => ("N", detail("notification")?),
+        _ => return None,
+    };
+    Some((prefix, id.strip_prefix(prefix)?.parse().ok()?))
 }

@@ -138,19 +138,22 @@ mod restart {
     use crate::core::tests::scratch;
     use crate::runtime::Runtime;
 
-    fn household() -> Value {
+    pub(super) fn household() -> Value {
         let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/diamond-dog-fake/household.json")).unwrap();
         serde_json::from_str(&text).unwrap()
     }
 
-    fn daybook() -> Value {
+    pub(super) fn daybook() -> Value {
         let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../examples/diamond-dog-fake/daybook-manifest.json")).unwrap();
         serde_json::from_str(&text).unwrap()
     }
 
-    fn start(path: &std::path::Path) -> (Runtime, crate::core::recovery::Recovery) {
+    pub(super) fn start(path: &std::path::Path) -> (Runtime, crate::core::recovery::Recovery) {
+        start_with(path, household())
+    }
+
+    pub(super) fn start_with(path: &std::path::Path, setup: Value) -> (Runtime, crate::core::recovery::Recovery) {
         let (journal, opened) = Journal::open(path).unwrap();
-        let setup = household();
         let now = chrono::DateTime::parse_from_rfc3339(setup["now"].as_str().unwrap()).unwrap().with_timezone(&chrono::Utc);
         let mut rt = Runtime::with_journal(journal, now);
         let report = rt.core.recover(&opened);
@@ -159,7 +162,7 @@ mod restart {
         (rt, report)
     }
 
-    fn call(rt: &mut Runtime, path: &str, body: Value) -> Value {
+    pub(super) fn call(rt: &mut Runtime, path: &str, body: Value) -> Value {
         let (surface, version, name) = crate::fixture::split_call(path).unwrap();
         match rt.call(surface, version, name, &body) {
             Ok(v) => v,
@@ -169,13 +172,13 @@ mod restart {
 
     const DANA: &str = r#"{"shell": "dana", "device": "dana-phone"}"#;
 
-    fn dana() -> Value {
+    pub(super) fn dana() -> Value {
         serde_json::from_str(DANA).unwrap()
     }
 
     /// Installs Daybook, opens a reply activity, proposes a mail and has Dana
     /// approve it. Returns the activity, the proposal and the payload.
-    fn approved_send(rt: &mut Runtime) -> (String, String, Value) {
+    pub(super) fn approved_send(rt: &mut Runtime) -> (String, String, Value) {
         call(rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": daybook() }));
         call(rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "daybook" }));
         let a = call(rt, "activities/v0.3/open", json!({ "caller": { "app": "daybook", "member": "dana" }, "routine": "reply" }));
@@ -272,5 +275,183 @@ mod restart {
         assert_ne!(aid, first_activity);
         assert_ne!(receipt["request_id"].as_str().unwrap(), first_request);
         assert_eq!(receipt["outcome"]["state"], "acknowledged");
+    }
+
+    #[test]
+    fn ids_named_in_caller_text_do_not_move_the_counters() {
+        let path = scratch("injected-ids");
+        {
+            let (mut rt, _) = start(&path);
+            call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": daybook() }));
+            call(&mut rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "daybook" }));
+            let a = call(&mut rt, "activities/v0.3/open", json!({ "caller": { "app": "daybook", "member": "dana" }, "routine": "reply" }));
+            // Text the app chose, journaled as it was given, that looks like the
+            // largest possible ids.
+            let target = "A18446744073709551615:auth-18446744073709551615:G18446744073709551615:P18446744073709551615:R18446744073709551615";
+            call(
+                &mut rt,
+                "proposals/v0.3/propose",
+                json!({ "caller": { "routine": a["activity"] }, "operation": "mail.send", "object": "mail:household-mail", "payload": { "subject": target }, "target": target }),
+            );
+        }
+
+        let (mut rt, _) = start(&path);
+        let (aid, pid, payload) = approved_send(&mut rt);
+        let receipt = call(&mut rt, "ledger/v0.1/act", json!({ "caller": { "routine": aid }, "operation": "mail.send", "object": "mail:household-mail", "proposal": pid, "payload": payload }));
+        assert_eq!(aid, "A2");
+        assert_eq!(receipt["outcome"]["state"], "acknowledged");
+    }
+
+    #[test]
+    fn a_wipe_and_a_restart_do_not_reuse_ids() {
+        let path = scratch("wipe-ids");
+        let (first_activity, first_request) = {
+            let (mut rt, _) = start(&path);
+            let (aid, pid, payload) = approved_send(&mut rt);
+            let receipt = call(&mut rt, "ledger/v0.1/act", json!({ "caller": { "routine": aid }, "operation": "mail.send", "object": "mail:household-mail", "proposal": pid, "payload": payload }));
+            call(&mut rt, "household/v0.3/wipe", json!({ "caller": dana() }));
+            assert!(rt.ledger().is_empty());
+            (aid, receipt["request_id"].as_str().unwrap().to_string())
+        };
+
+        let (mut rt, _) = start(&path);
+        let (aid, pid, payload) = approved_send(&mut rt);
+        let receipt = call(&mut rt, "ledger/v0.1/act", json!({ "caller": { "routine": aid }, "operation": "mail.send", "object": "mail:household-mail", "proposal": pid, "payload": payload }));
+        assert_ne!(aid, first_activity);
+        assert_ne!(receipt["request_id"].as_str().unwrap(), first_request);
+    }
+
+    #[test]
+    fn a_one_time_fetch_grant_is_used_once_and_stays_used_after_a_restart() {
+        let path = scratch("one-time-fetch");
+        let mut setup = household();
+        setup["web"] = json!([{ "host": "api.recalls.example", "path": "/recalls", "content_type": "application/json", "body": "{\"recalls\": []}" }]);
+        let sam = json!({ "shell": "sam", "device": "sam-phone" });
+        let fetch = |aid: &Value, gid: &Value| json!({ "caller": { "routine": aid }, "host": "api.recalls.example", "path": "/recalls", "api": true, "grant": gid });
+
+        let gid = {
+            let (mut rt, _) = start_with(&path, setup.clone());
+            call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": super::enforcement::upkeep() }));
+            call(&mut rt, "install/v0.3/switch_on", json!({ "caller": sam, "app": "upkeep" }));
+            let a = call(&mut rt, "activities/v0.3/open", json!({ "caller": { "app": "upkeep", "member": "sam" }, "routine": "recalls" }));
+            let g = call(
+                &mut rt,
+                "grants/v0.3/grant",
+                json!({ "caller": sam, "holder": { "activity": a["activity"] }, "operation": "web.fetch", "object": "web:api.recalls.example", "kind": "one_time", "bound_to": { "vehicle": "fit" } }),
+            );
+
+            call(&mut rt, "egress/v0.3/fetch", fetch(&a["activity"], &g["grant"]));
+            let (surface, version, name) = crate::fixture::split_call("egress/v0.3/fetch").unwrap();
+            assert!(rt.call(surface, version, name, &fetch(&a["activity"], &g["grant"])).is_err());
+            assert_eq!(rt.mock.fetches.len(), 1);
+            g["grant"].as_str().unwrap().to_string()
+        };
+
+        let (_, report) = start_with(&path, setup);
+        assert!(!report.grants_ended.contains(&gid));
+    }
+}
+
+mod enforcement {
+    use serde_json::{Value, json};
+
+    use super::restart::{call, dana, daybook, household};
+    use crate::model::{ActivityState, GrantState};
+    use crate::runtime::Runtime;
+
+    fn runtime() -> Runtime {
+        let mut rt = Runtime::new();
+        rt.configure(&household()).unwrap();
+        rt
+    }
+
+    const SAM: &str = r#"{"shell": "sam", "device": "sam-phone"}"#;
+
+    fn sam() -> Value {
+        serde_json::from_str(SAM).unwrap()
+    }
+
+    /// An add-on an adult can switch on, with one standing web.fetch operation.
+    pub(super) fn upkeep() -> Value {
+        json!({
+            "app": "upkeep",
+            "name": "Upkeep",
+            "version": "0.1.0",
+            "surfaces": { "install": "0.3", "activities": "0.3", "grants": "0.3", "egress": "0.3" },
+            "routines": [{ "name": "recalls" }],
+            "operations": [{ "operation": "web.fetch", "adapter": "web", "object": "web:api.recalls.example", "grant": "standing" }],
+            "fetch_params": [{ "host": "api.recalls.example", "params": [] }]
+        })
+    }
+
+    fn install_grant(rt: &Runtime, app: &str) -> String {
+        rt.core.grants().find(|g| g.app == app && g.derived_from.is_none()).unwrap().id.clone()
+    }
+
+    #[test]
+    fn uninstalling_revokes_a_held_install_grant() {
+        let mut rt = runtime();
+        call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": daybook() }));
+        call(&mut rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "daybook", "standing_grants": [{ "operation": "mail.read", "object": "mail:household-mail" }] }));
+        let gid = install_grant(&rt, "daybook");
+        call(&mut rt, "install/v0.3/switch_off", json!({ "caller": dana(), "app": "daybook" }));
+        assert_eq!(rt.core.grant(&gid).unwrap().state(), GrantState::Held);
+
+        call(&mut rt, "install/v0.3/uninstall", json!({ "caller": dana(), "app": "daybook" }));
+        assert_eq!(rt.core.grant(&gid).unwrap().state(), GrantState::Revoked);
+
+        call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": daybook() }));
+        let on = call(&mut rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "daybook", "confirm_held": ["all"] }));
+        assert_eq!(on["grants"], json!([]));
+        assert_eq!(rt.core.grant(&gid).unwrap().state(), GrantState::Revoked);
+    }
+
+    #[test]
+    fn only_its_principal_confirms_a_held_grant() {
+        let mut rt = runtime();
+        call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": upkeep() }));
+        call(&mut rt, "install/v0.3/switch_on", json!({ "caller": sam(), "app": "upkeep", "standing_grants": [{ "operation": "web.fetch", "object": "web:api.recalls.example" }] }));
+        let gid = install_grant(&rt, "upkeep");
+        call(&mut rt, "install/v0.3/switch_off", json!({ "caller": dana(), "app": "upkeep" }));
+
+        let on = call(&mut rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "upkeep", "confirm_held": [gid] }));
+        assert_eq!(on["held_for_confirmation"], json!([gid]));
+        assert_eq!(rt.core.grant(&gid).unwrap().state(), GrantState::Held);
+
+        call(&mut rt, "install/v0.3/switch_off", json!({ "caller": sam(), "app": "upkeep" }));
+        call(&mut rt, "install/v0.3/switch_on", json!({ "caller": sam(), "app": "upkeep", "confirm_held": [gid] }));
+        assert_eq!(rt.core.grant(&gid).unwrap().state(), GrantState::Live);
+    }
+
+    #[test]
+    fn a_first_disclosure_over_the_ceiling_waits_without_an_illegal_move() {
+        let mut rt = runtime();
+        call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": daybook() }));
+        call(&mut rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "daybook", "standing_grants": [{ "operation": "provider.disclose", "object": "provider:claude" }] }));
+        call(&mut rt, "household/v0.3/set_spend_allowance", json!({ "caller": dana(), "app": "daybook", "ceiling_cents": 0 }));
+        let a = call(&mut rt, "activities/v0.3/open", json!({ "caller": { "app": "daybook", "member": "dana" }, "routine": "intake" }));
+        let aid = a["activity"].as_str().unwrap();
+
+        let (surface, version, name) = crate::fixture::split_call("egress/v0.3/disclose").unwrap();
+        let refused = rt.call(surface, version, name, &json!({ "caller": { "routine": aid }, "provider": "claude", "content": "hello" }));
+        assert!(refused.is_err());
+        assert_eq!(rt.core.activity(aid).unwrap().state(), ActivityState::Waiting);
+    }
+
+    #[test]
+    fn proposing_while_suspended_stays_suspended() {
+        let mut rt = runtime();
+        call(&mut rt, "install/v0.3/install", json!({ "caller": dana(), "manifest": daybook() }));
+        call(&mut rt, "install/v0.3/switch_on", json!({ "caller": dana(), "app": "daybook", "standing_grants": [{ "operation": "mail.read", "object": "mail:household-mail" }] }));
+        let a = call(&mut rt, "activities/v0.3/open", json!({ "caller": { "app": "daybook", "member": "dana" }, "routine": "reply" }));
+        let aid = a["activity"].as_str().unwrap();
+        call(&mut rt, "grants/v0.3/use", json!({ "caller": { "routine": aid }, "operation": "mail.read", "object": "mail:household-mail" }));
+        let gid = install_grant(&rt, "daybook");
+        call(&mut rt, "grants/v0.3/revoke", json!({ "caller": dana(), "grant": gid }));
+        assert_eq!(rt.core.activity(aid).unwrap().state(), ActivityState::Suspended);
+
+        let p = call(&mut rt, "proposals/v0.3/propose", json!({ "caller": { "routine": aid }, "operation": "mail.send", "object": "mail:household-mail", "payload": { "subject": "Hi" } }));
+        assert_eq!(p["needs_approval"], true);
+        assert_eq!(rt.core.activity(aid).unwrap().state(), ActivityState::Suspended);
     }
 }

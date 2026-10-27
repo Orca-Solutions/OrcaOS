@@ -706,11 +706,14 @@ impl Runtime {
 
         self.withdraw_proposals(|p| p.app == app, "its app was switched off");
 
+        // Uninstalling revokes held install grants too, so a later install
+        // cannot confirm one back to life.
         let revoke = revoke || self.apps[app].manifest.off_revokes;
         let ids: Vec<String> = self
             .core
             .grants()
-            .filter(|g| g.app == app && g.state() == GrantState::Live && matches!(g.holder, Holder::App(_)))
+            .filter(|g| g.app == app && matches!(g.holder, Holder::App(_)))
+            .filter(|g| g.state() == GrantState::Live || (revoke && g.state() == GrantState::Held))
             .map(|g| g.id.clone())
             .collect();
         for gid in ids {
