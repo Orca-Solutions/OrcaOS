@@ -1,0 +1,52 @@
+{
+  "now": "2026-11-02T14:00:00Z",
+  "household": {
+    "zone": "America/New_York",
+    "members": [
+      {
+        "id": "dana",
+        "name": "Dana",
+        "role": "owner",
+        "may_approve": [
+          "*"
+        ],
+        "devices": [
+          "dana-phone"
+        ]
+      },
+      {
+        "id": "sam",
+        "name": "Sam",
+        "role": "adult",
+        "may_approve": [
+          "mail.send",
+          "calendar.write"
+        ],
+        "devices": [
+          "sam-phone"
+        ]
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "role": "child"
+      }
+    ],
+    "guardians": {
+      "maya": [
+        "dana"
+      ]
+    }
+  },
+  "connections": [
+    {
+      "handle": "household-mail",
+      "kind": "mail",
+      "account": "family@example.test"
+    },
+    {
+      "handle": "claude",
+      "kind": "provider"
+    }
+  ]
+}

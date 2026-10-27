@@ -1,0 +1,50 @@
+{
+  "base_seed": 20261020,
+  "configuration": {
+    "component_wasm_debug_sha256": "acf28e632a1547be68c8eed966185a759e50899dd10de4533912a1cb6bb68ba1",
+    "component_wasm_sha256": "missing",
+    "golem_manifest_sha256": "b7c23fb25ee6597e771ef77df6848b055fbffb745cb45e7f65da88e25f046190",
+    "validity_window_ms": 600000
+  },
+  "host": {
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": "4",
+    "kernel": "Linux 6.18.44-fc-v139 x86_64",
+    "memory": "16093 MiB",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "mock_service": {
+    "binary_sha256": "66868c6767b08770e335f58c21893d337071fcc105825c01a75f3ef28ce57f6b"
+  },
+  "platform": {
+    "container_image": "[mirror.gcr.io/golemservices/golem:v1.6.0] sha256:5c30cfc7f4abbf71c429471584808f8433db959495087117008baf76ef4be01f [mirror.gcr.io/golemservices/golem@sha256:5c30cfc7f4abbf71c429471584808f8433db959495087117008baf76ef4be01f]",
+    "golem_binary_sha256": "499ba404c74ec7bea75b294766c28be5c10c919154305c9c3f26f2e451e8fcc8",
+    "golem_cli_and_server": "golem 1.6.0",
+    "golem_rust": "version = \"3.0.0\""
+  },
+  "protocol": "OrcaOS experiment plan, protocol as of 2026-10-20",
+  "repository_commit": "34e9316aea60d45146e1931094240bc3d86f0021",
+  "repository_dirty": false,
+  "synthetic_inputs": [
+    {
+      "object": "c1@v1",
+      "sha256": "581889ec5bb565efcdd706f79bb56e2e76ffb219d0a90e8a7134f22c9d854b0b"
+    },
+    {
+      "object": "c1@v2",
+      "sha256": "bd4e54b106820b5d2056a5b360e140464a479fcd52e4c28ad5c3701effad5c69"
+    },
+    {
+      "object": "c2@v1",
+      "sha256": "98743118f24e29ff4ab5653d9b923b1a20b657cc455aae8e8eb09a6f2d12c3e0"
+    },
+    {
+      "object": "c3@v1",
+      "sha256": "faf1ebee0792beda6481c718679881df6cbff82c4746631aa849edccc069a527"
+    },
+    {
+      "object": "tax-return-2025",
+      "sha256": "106cd7607fce2e480b3da39556b950dd23b5bd0a539f2ec864c8f060da5807f2"
+    }
+  ]
+}

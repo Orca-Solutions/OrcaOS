@@ -1,0 +1,6 @@
+SYNTHETIC CONTRACT C2 (fabricated test data; no real parties)
+Parties: Contoso Placeholder Services and Example Holdings
+Term: 2026-08-15 to 2026-12-31
+Value: 6,250 test-dollars in total
+Renewal: by written agreement only
+Payment: on completion, net 45

@@ -1,0 +1,226 @@
+{
+  "name": "Undeclared operation refused",
+  "about": "Daybook asks to send mail without declaring send in its manifest. Refused, and journaled as a denial with holder, operation, object and reason.",
+  "setup": {
+    "now": "2026-11-02T14:00:00Z",
+    "household": {
+      "zone": "America/New_York",
+      "members": [
+        {
+          "id": "dana",
+          "name": "Dana",
+          "role": "owner",
+          "may_approve": [
+            "*"
+          ],
+          "devices": [
+            "dana-phone"
+          ]
+        },
+        {
+          "id": "sam",
+          "name": "Sam",
+          "role": "adult",
+          "may_approve": [
+            "mail.send",
+            "calendar.write"
+          ],
+          "devices": [
+            "sam-phone"
+          ]
+        },
+        {
+          "id": "maya",
+          "name": "Maya",
+          "role": "child"
+        }
+      ],
+      "guardians": {
+        "maya": [
+          "dana"
+        ]
+      }
+    },
+    "connections": [
+      {
+        "handle": "household-mail",
+        "kind": "mail",
+        "account": "family@example.test"
+      },
+      {
+        "handle": "claude",
+        "kind": "provider"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "daybook",
+          "name": "Daybook",
+          "version": "0.1.0",
+          "kind": "core",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.3",
+            "grants": "0.3",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.3",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "note"
+            },
+            {
+              "name": "mail_item"
+            },
+            {
+              "name": "health_note",
+              "categories": [
+                "health"
+              ]
+            }
+          ],
+          "routines": [
+            {
+              "name": "intake",
+              "timeout_minutes": 30
+            },
+            {
+              "name": "reply",
+              "timeout_minutes": 60
+            },
+            {
+              "name": "morning",
+              "trigger": "schedule",
+              "concurrency_key": "morning",
+              "timeout_minutes": 30
+            }
+          ],
+          "operations": [
+            {
+              "operation": "mail.read",
+              "adapter": "mail",
+              "object": "mail:household-mail",
+              "grant": "standing"
+            },
+            {
+              "operation": "provider.disclose",
+              "adapter": "provider",
+              "object": "provider:claude",
+              "grant": "standing"
+            }
+          ],
+          "providers": [
+            {
+              "name": "claude"
+            }
+          ],
+          "disclosure_categories": [
+            "general",
+            "health"
+          ],
+          "notifications": {
+            "kinds": [
+              "digest"
+            ],
+            "per_day": 3
+          }
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "app": "daybook",
+        "standing_grants": [
+          {
+            "operation": "mail.read",
+            "object": "mail:household-mail"
+          }
+        ]
+      },
+      "save": {
+        "install_grants": "grants"
+      }
+    },
+    {
+      "call": "activities/v0.3/open",
+      "body": {
+        "caller": {
+          "app": "daybook",
+          "member": "dana"
+        },
+        "routine": "reply"
+      },
+      "save": {
+        "a1": "activity"
+      }
+    },
+    {
+      "call": "ledger/v0.1/act",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "operation": "mail.send",
+        "object": "mail:household-mail",
+        "payload": {
+          "to": "school@example.test",
+          "subject": "Field trip form",
+          "body": "Signed and attached."
+        }
+      },
+      "expect": {
+        "refused": "operation_not_in_manifest"
+      }
+    }
+  ],
+  "expect_ledger": [
+    {
+      "kind": "refusal",
+      "source": {
+        "kind": "participant"
+      },
+      "app": "daybook",
+      "activity": "${a1}",
+      "holder": "activity:${a1}",
+      "operation": "mail.send",
+      "object": "mail:household-mail",
+      "reason": {
+        "code": "operation_not_in_manifest"
+      }
+    }
+  ],
+  "forbid_ledger": [
+    {
+      "kind": "consumption"
+    },
+    {
+      "kind": "receipt"
+    }
+  ],
+  "expect_mock": {
+    "mail": {
+      "household-mail": {
+        "arrived_count": 0,
+        "delivered_count": 0
+      }
+    }
+  }
+}

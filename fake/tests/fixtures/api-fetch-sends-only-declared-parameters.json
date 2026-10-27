@@ -1,0 +1,241 @@
+{
+  "name": "An API fetch sends only the parameters the manifest declares (G-17)",
+  "setup": {
+    "now": "2026-11-02T14:00:00Z",
+    "household": {
+      "zone": "America/New_York",
+      "members": [
+        {
+          "id": "dana",
+          "name": "Dana",
+          "role": "owner",
+          "may_approve": [
+            "*"
+          ],
+          "devices": [
+            "dana-phone"
+          ]
+        },
+        {
+          "id": "sam",
+          "name": "Sam",
+          "role": "adult",
+          "may_approve": [
+            "mail.send",
+            "calendar.write"
+          ],
+          "devices": [
+            "sam-phone"
+          ]
+        },
+        {
+          "id": "maya",
+          "name": "Maya",
+          "role": "child"
+        }
+      ],
+      "guardians": {
+        "maya": [
+          "dana"
+        ]
+      }
+    },
+    "connections": [
+      {
+        "handle": "household-mail",
+        "kind": "mail",
+        "account": "family@example.test"
+      },
+      {
+        "handle": "claude",
+        "kind": "provider"
+      }
+    ],
+    "web": [
+      {
+        "host": "api.recalls.example",
+        "path": "/recalls",
+        "content_type": "application/json",
+        "body": "{\"recalls\": []}"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "call": "install/v0.3/install",
+      "body": {
+        "caller": {
+          "shell": "dana",
+          "device": "dana-phone"
+        },
+        "manifest": {
+          "app": "upkeep",
+          "name": "Upkeep",
+          "version": "0.1.0",
+          "surfaces": {
+            "install": "0.3",
+            "activities": "0.3",
+            "grants": "0.3",
+            "proposals": "0.3",
+            "ledger": "0.1",
+            "records": "0.3",
+            "egress": "0.3",
+            "members": "0.2",
+            "schedules": "0.3",
+            "household": "0.3"
+          },
+          "record_types": [
+            {
+              "name": "vehicle"
+            }
+          ],
+          "routines": [
+            {
+              "name": "recalls",
+              "trigger": "schedule"
+            }
+          ],
+          "operations": [
+            {
+              "operation": "web.fetch",
+              "adapter": "web",
+              "object": "web:api.recalls.example",
+              "grant": "standing"
+            }
+          ],
+          "fetch_params": [
+            {
+              "host": "api.recalls.example",
+              "params": [
+                "year",
+                "make",
+                "model"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "call": "install/v0.3/switch_on",
+      "body": {
+        "caller": {
+          "shell": "sam",
+          "device": "sam-phone"
+        },
+        "app": "upkeep",
+        "standing_grants": [
+          {
+            "operation": "web.fetch",
+            "object": "web:api.recalls.example"
+          }
+        ]
+      }
+    },
+    {
+      "call": "activities/v0.3/open",
+      "body": {
+        "caller": {
+          "app": "upkeep",
+          "member": "sam"
+        },
+        "routine": "recalls"
+      },
+      "save": {
+        "a1": "activity"
+      }
+    },
+    {
+      "call": "egress/v0.3/fetch",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "host": "api.recalls.example",
+        "path": "/recalls",
+        "api": true,
+        "query": {
+          "year": "2019",
+          "make": "Honda",
+          "model": "Fit",
+          "vin": "SYNTHETIC0000000"
+        }
+      },
+      "expect": {
+        "refused": "query_parameter_undeclared"
+      }
+    },
+    {
+      "call": "egress/v0.3/fetch",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "host": "api.recalls.example",
+        "path": "/recalls",
+        "api": true,
+        "query": {
+          "year": "2019",
+          "make": "Honda",
+          "model": "Fit"
+        }
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "content_type": "application/json",
+          "body": "{\"recalls\": []}"
+        }
+      }
+    },
+    {
+      "call": "egress/v0.3/fetch",
+      "body": {
+        "caller": {
+          "routine": "${a1}"
+        },
+        "host": "other.example",
+        "path": "/"
+      },
+      "expect": {
+        "refused": "object_outside_manifest"
+      }
+    }
+  ],
+  "expect_ledger": [
+    {
+      "kind": "refusal",
+      "operation": "web.fetch",
+      "object": "web:api.recalls.example",
+      "reason": {
+        "code": "query_parameter_undeclared"
+      },
+      "detail": {
+        "about": {
+          "undeclared": [
+            "vin"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "fetch",
+      "source": {
+        "kind": "external",
+        "system": "api.recalls.example",
+        "adapter": "fetch adapter"
+      },
+      "detail": {
+        "api": true,
+        "params": [
+          "make",
+          "model",
+          "year"
+        ]
+      }
+    }
+  ],
+  "expect_mock": {
+    "fetch_count": 1
+  }
+}
