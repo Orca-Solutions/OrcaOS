@@ -12,3 +12,6 @@ license.
   Orca Keel) pin against: ten surfaces, each versioned on its own, plus the
   fake runtime that stands in until the real one exists. Provisional until the
   experiment gate; see its Status section.
+- [sensor-observation](sensor-observation/README.md): version 0.1, draft. How
+  a small device (a sensor hub, a single sensor bridge) publishes readings and
+  coverage to a service that keeps them.

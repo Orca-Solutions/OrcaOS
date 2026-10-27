@@ -1,0 +1,346 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diamond-dog:interface:sensor-observation:0.1",
+  "title": "Diamond Dog sensor observation interface 0.1 (draft)",
+  "description": "Provider-neutral sensor observation and coverage shapes (MIT). Rules: README.md beside this file. Daybook implements the same definitions in its proposed satellite contract; a change to one changes both in the same release.",
+  "$defs": {
+    "SensorQuantity": {
+      "type": "string",
+      "enum": [
+        "temperature",
+        "relative_humidity",
+        "pressure",
+        "illuminance",
+        "co2",
+        "pm2_5",
+        "contact",
+        "motion",
+        "occupancy",
+        "water_leak",
+        "vibration",
+        "soil_moisture",
+        "battery",
+        "power",
+        "energy",
+        "voltage",
+        "odometer"
+      ],
+      "description": "Closed list. Life-safety alarms (smoke, carbon monoxide, intrusion) are deliberately absent: Daybook is not an alarm system and runs on a host that sleeps."
+    },
+    "SensorUnit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "Cel",
+        "[degF]",
+        "%",
+        "hPa",
+        "lx",
+        "ppm",
+        "ug/m3",
+        "W",
+        "kW.h",
+        "V",
+        "km",
+        "[mi_i]",
+        null
+      ],
+      "description": "UCUM code. Null for boolean and state channels. Allowed units per quantity are listed in SATELLITE_CONTRACTS.md section 3.3; readings keep the channel's unit and are never converted on write."
+    },
+    "SensorChannel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Unique within its source and never reused for a different quantity or unit."
+        },
+        "quantity": {
+          "$ref": "#/$defs/SensorQuantity"
+        },
+        "unit": {
+          "$ref": "#/$defs/SensorUnit"
+        },
+        "value_kind": {
+          "type": "string",
+          "enum": [
+            "number",
+            "boolean",
+            "state"
+          ]
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "maxItems": 16,
+          "uniqueItems": true,
+          "description": "Allowed values when value_kind is state; empty otherwise. The only strings a device may send as values."
+        },
+        "reporting": {
+          "type": "string",
+          "enum": [
+            "periodic",
+            "on_change"
+          ]
+        },
+        "expected_interval_seconds": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 86400,
+          "description": "periodic: the sampling interval. on_change: the longest the device may stay quiet before it must send a coverage window (heartbeat)."
+        }
+      },
+      "required": [
+        "key",
+        "quantity",
+        "unit",
+        "value_kind",
+        "states",
+        "reporting",
+        "expected_interval_seconds"
+      ],
+      "description": "One measured quantity of one sensor."
+    },
+    "SensorValue": {
+      "type": [
+        "number",
+        "boolean",
+        "string"
+      ],
+      "description": "Must match the channel's value_kind; a string must be one of the channel's states."
+    },
+    "SensorObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "channel": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$"
+        },
+        "native_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+          "description": "Device-assigned id, unique per source for ever (for example boot id plus sequence). An exact resend is one stored observation."
+        },
+        "event_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the sensor measured it, by the device clock, UTC with Z."
+        },
+        "clock": {
+          "type": "string",
+          "enum": [
+            "synced",
+            "unsynced"
+          ],
+          "description": "unsynced when the device had no NTP or RTC time; the server then trusts only its own receipt time."
+        },
+        "value": {
+          "$ref": "#/$defs/SensorValue"
+        },
+        "quality": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "suspect"
+          ],
+          "default": "ok"
+        }
+      },
+      "required": [
+        "source_id",
+        "channel",
+        "native_id",
+        "event_at",
+        "clock",
+        "value"
+      ],
+      "description": "One reading. Untrusted data: it can update observational state and feed deterministic rules, never complete a task, approve anything or reach a model as an instruction."
+    },
+    "CoverageWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "period": {
+          "$ref": "#/$defs/Period"
+        },
+        "clock": {
+          "type": "string",
+          "enum": [
+            "synced",
+            "unsynced"
+          ]
+        }
+      },
+      "required": [
+        "source_id",
+        "channels",
+        "period",
+        "clock"
+      ],
+      "description": "The device asserts it was collecting these channels for the whole period. Quiet time inside a window means nothing was observed; time outside every window is unknown."
+    },
+    "SensorObservationBatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SensorObservation"
+          },
+          "maxItems": 500,
+          "default": []
+        },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CoverageWindow"
+          },
+          "maxItems": 100,
+          "default": []
+        }
+      },
+      "required": [],
+      "description": "At least one of observations or coverage must be non-empty. Send oldest first. Body limit 256 KiB.",
+      "minProperties": 1
+    },
+    "SensorItemResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "observation",
+            "coverage"
+          ]
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "duplicate",
+            "discarded_paused",
+            "rejected"
+          ]
+        },
+        "code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "unknown_channel",
+            "wrong_value_kind",
+            "unknown_state",
+            "unit_mismatch",
+            "clock_skew",
+            "source_unavailable",
+            "invalid_period",
+            null
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "index",
+        "status",
+        "code"
+      ],
+      "description": "Reported only for items that were not newly accepted. duplicate and discarded_paused are final: do not resend. rejected with source_unavailable means stop sending for that source."
+    },
+    "SensorBatchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "received_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "accepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "discarded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_accepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SensorItemResult"
+          },
+          "maxItems": 600
+        }
+      },
+      "required": [
+        "received_at",
+        "accepted",
+        "duplicates",
+        "discarded",
+        "rejected",
+        "coverage_accepted",
+        "items"
+      ],
+      "description": "200 means the batch was durably processed. Every item is either accepted or listed in items."
+    },
+    "Period": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "description": "Half-open UTC interval [start,end); start must precede end."
+    }
+  }
+}
