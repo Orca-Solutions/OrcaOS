@@ -3,8 +3,9 @@
 
 # Native workspace for the Scenario A experiment: the shared reference
 # implementation, the shared task logic, the mock mail service and the test
-# harness. The Golem application under golem/ builds separately, with
-# `golem build`, for wasm32-wasip2.
+# harness, and the conventional composition with its participant component.
+# The Golem application under golem/ builds separately, with `golem build`,
+# for wasm32-wasip2.
 [workspace]
 resolver = "2"
 members = [
@@ -12,6 +13,8 @@ members = [
     "shared/scenario-task",
     "mock-mail",
     "harness",
+    "conventional",
+    "conventional/participant",
 ]
 exclude = ["golem"]
 

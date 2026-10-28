@@ -1,23 +1,27 @@
 // SPDX-FileCopyrightText: The OrcaOS Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! The Scenario A harness and facilitator controls.
+//! The Scenario A harness and facilitator controls, for either build.
 //!
 //!   harness suite [--reps N] [--race-reps N] [--seed S] [--out DIR] [--only T,T]
 //!   harness test T [--reps N] [--seed S] [--out DIR]
-//!   harness cards RUN          compare every agent's card list with golem.yaml
+//!   harness cards RUN          compare each participant's native authority with its declaration
 //!   harness inspect RUN        the inspector's answers for one run
 //!   harness ctl RUN OP ARGS    facilitator controls (see `ctl` below)
 //!
-//! Run from experiment/, with the Golem server, the deployed component and
-//! the mock mail service up. Scorecard: excluded (test harness).
+//! ORCA_PLATFORM picks the build: `golem` (the default) or `conventional`.
+//! Run from experiment/, with the build's services and the mock mail service
+//! up. Scorecard: excluded (test harness).
 
+mod conventional;
 mod golem;
 mod inspector;
 mod mock;
+mod platform;
 mod record;
 mod scenario;
 mod tests;
+mod wasmtime_trace;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -25,8 +29,8 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-use golem::Golem;
 use mock::Mock;
+use platform::Platform;
 use scenario::Run;
 use tests::{Ctx, Rep};
 
@@ -104,12 +108,16 @@ impl Suite<'_> {
         let mut tests: Vec<String> = self.reps.iter().map(|r| r.test.clone()).collect();
         tests.dedup();
 
+        let native = match self.ctx.platform {
+            Platform::Golem(_) => "Card lists matched golem.yaml",
+            Platform::Conventional(_) => "Participant containers matched the plan's grant table and confinement",
+        };
         let mut lines = vec![
-            "# Scenario A on Golem: acceptance results".to_string(),
+            format!("# Scenario A on {}: acceptance results", self.ctx.platform.title()),
             String::new(),
             format!("Run prefix `{}`, base seed {}. Each test passes only if every check holds in every repetition.", self.prefix, self.seed),
             String::new(),
-            format!("Card lists matched golem.yaml before the suite: {}; after: {}.", cards_before.0, cards_after.0),
+            format!("{native} before the suite: {}; after: {}.", cards_before.0, cards_after.0),
             String::new(),
             "| Test | Repetitions | Passed | Result |".into(),
             "| --- | --- | --- | --- |".into(),
@@ -137,7 +145,7 @@ impl Suite<'_> {
     }
 }
 
-fn suite(args: &[String], golem: &Golem, mock: &Mock, single: Option<&str>) {
+fn suite(args: &[String], platform: &Platform, mock: &Mock, single: Option<&str>) {
     let reps: u32 = flag(args, "--reps").and_then(|v| v.parse().ok()).unwrap_or(20);
     let race_reps: u32 = flag(args, "--race-reps").and_then(|v| v.parse().ok()).unwrap_or(100);
     let seed: u64 = flag(args, "--seed").and_then(|v| v.parse().ok()).unwrap_or(20261020);
@@ -158,32 +166,37 @@ fn suite(args: &[String], golem: &Golem, mock: &Mock, single: Option<&str>) {
         }
     };
 
-    let record = record::reproducibility(golem, validity_ms(), seed);
+    let record = record::reproducibility(platform, validity_ms(), seed);
     std::fs::write(out.join("record.json"), serde_json::to_string_pretty(&record).unwrap()).unwrap();
 
-    // Before the run: every agent's card list against the declarations.
+    // Before the run: every participant's native authority against its
+    // declaration (Golem's card lists, the conventional build's mounts).
+    let (native, declaration) = match platform {
+        Platform::Golem(_) => ("cards", "golem.yaml"),
+        Platform::Conventional(_) => ("mounts", "the plan's grant table and confinement"),
+    };
     let card_run = format!("{prefix}-cards");
-    let probe = Run::new(card_run.clone(), golem, mock);
+    let probe = Run::new(card_run.clone(), platform, mock);
     let _ = probe.setup();
-    let cards_before = record::check_cards(golem, &card_run);
-    std::fs::write(out.join("cards-before.json"), serde_json::to_string_pretty(&cards_before.1).unwrap()).unwrap();
+    let cards_before = record::check_native(platform, &card_run);
+    std::fs::write(out.join(format!("{native}-before.json")), serde_json::to_string_pretty(&cards_before.1).unwrap()).unwrap();
     if !cards_before.0 {
-        println!("a card list does not match golem.yaml; stopping (see cards-before.json)");
+        println!("a participant's {native} do not match {declaration}; stopping (see {native}-before.json)");
         return;
     }
 
-    let mut s = Suite { ctx: Ctx { golem, mock }, out: out.clone(), prefix: prefix.clone(), seed, reps: Vec::new() };
+    let mut s = Suite { ctx: Ctx { platform, mock }, out: out.clone(), prefix: prefix.clone(), seed, reps: Vec::new() };
     for (test, n) in plan {
         s.run_test(test, n);
     }
     let windows = s.after_windows();
     std::fs::write(out.join("after-window.json"), serde_json::to_string_pretty(&windows).unwrap()).unwrap();
 
-    let cards_after = record::check_cards(golem, &card_run);
-    std::fs::write(out.join("cards-after.json"), serde_json::to_string_pretty(&cards_after.1).unwrap()).unwrap();
+    let cards_after = record::check_native(platform, &card_run);
+    std::fs::write(out.join(format!("{native}-after.json")), serde_json::to_string_pretty(&cards_after.1).unwrap()).unwrap();
     std::fs::write(out.join("mock-logs.json"), serde_json::to_string(&mock.logs()).unwrap()).unwrap();
 
-    let journals: Vec<Value> = s.reps.iter().map(|r| json!({ "run": r.run, "export": Run::new(r.run.clone(), golem, mock).journal() })).collect();
+    let journals: Vec<Value> = s.reps.iter().map(|r| json!({ "run": r.run, "export": Run::new(r.run.clone(), platform, mock).journal() })).collect();
     std::fs::write(out.join("journals.json"), serde_json::to_string(&journals).unwrap()).unwrap();
 
     let summary = s.summary(&cards_before, &cards_after, &windows);
@@ -192,8 +205,8 @@ fn suite(args: &[String], golem: &Golem, mock: &Mock, single: Option<&str>) {
 }
 
 /// Facilitator controls for driving one run by hand.
-fn ctl(run: &str, op: &str, rest: &[String], golem: &Golem, mock: &Mock) -> Result<String, String> {
-    let r = Run::new(run.to_string(), golem, mock);
+fn ctl(run: &str, op: &str, rest: &[String], platform: &Platform, mock: &Mock) -> Result<String, String> {
+    let r = Run::new(run.to_string(), platform, mock);
     let arg = |i: usize| rest.get(i).cloned().unwrap_or_default();
 
     match op {
@@ -205,7 +218,7 @@ fn ctl(run: &str, op: &str, rest: &[String], golem: &Golem, mock: &Mock) -> Resu
         "grant" => r.supervisor("grant", &[&arg(0), &arg(1), &arg(2), &arg(3), &arg(4)]),
         "cancel" => r.supervisor("cancel", &[&arg(0)]),
         "close" => r.supervisor("close", &[&arg(0)]),
-        "replace" => r.supervisor("replace", &[&arg(0), &arg(1), &r.agent2("Processor2", &arg(1)), &arg(2)]),
+        "replace" => r.replace(&arg(0), &arg(1), &arg(2)).map(|v| v.to_string()),
         "fault" => mock.fault(&arg(0), &arg(1), run, arg(2).parse().ok(), arg(3).parse().unwrap_or(0)).map(|_| "armed".into()),
         "clear" => mock.clear().map(|_| "cleared".into()),
         "hold" => mock.hold_at(&arg(0), run).map(|_| "armed".into()),
@@ -213,7 +226,7 @@ fn ctl(run: &str, op: &str, rest: &[String], golem: &Golem, mock: &Mock) -> Resu
             r.release_all();
             Ok("released".into())
         }
-        "crash" => golem.kill_and_restart().map(|d| format!("restarted in {} ms", d.as_millis())),
+        "crash" => platform.kill_and_restart().map(|d| format!("restarted in {} ms", d.as_millis())),
         "pending" => r.call(&r.agent("MailAdapter"), "pending", &[]),
         "journal" => Ok(serde_json::to_string_pretty(&r.journal()).unwrap()),
         "deliver-changed" => {
@@ -229,22 +242,22 @@ fn ctl(run: &str, op: &str, rest: &[String], golem: &Golem, mock: &Mock) -> Resu
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let golem = Golem::from_env();
+    let platform = Platform::from_env();
     let mock = Mock::from_env();
 
     match args.first().map(String::as_str) {
-        Some("suite") => suite(&args, &golem, &mock, None),
-        Some("test") => suite(&args, &golem, &mock, args.get(1).map(String::as_str)),
+        Some("suite") => suite(&args, &platform, &mock, None),
+        Some("test") => suite(&args, &platform, &mock, args.get(1).map(String::as_str)),
         Some("cards") => {
-            let (ok, rows) = record::check_cards(&golem, &args[1]);
+            let (ok, rows) = record::check_native(&platform, &args[1]);
             println!("{}\nmatch: {ok}", serde_json::to_string_pretty(&rows).unwrap());
         }
         Some("inspect") => {
-            let export = Run::new(args[1].clone(), &golem, &mock).journal();
+            let export = Run::new(args[1].clone(), &platform, &mock).journal();
             let report = inspector::report(&export);
             println!("{}\n\n{}", inspector::say(&report), serde_json::to_string_pretty(&report).unwrap());
         }
-        Some("ctl") if args.len() >= 3 => match ctl(&args[1], &args[2], &args[3..], &golem, &mock) {
+        Some("ctl") if args.len() >= 3 => match ctl(&args[1], &args[2], &args[3..], &platform, &mock) {
             Ok(out) => println!("{out}"),
             Err(e) => {
                 eprintln!("{e}");

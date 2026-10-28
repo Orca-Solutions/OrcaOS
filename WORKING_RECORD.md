@@ -1,4 +1,26 @@
-# Scaffold working record
+# Working record
+
+## October 28, 2026 — Repository renamed to diamond-dog
+
+Jason renamed the GitHub repository from `Orca-Solutions/OrcaOS` to `Orca-Solutions/diamond-dog`. GitHub redirects the old URL, but clones should point at the new one (`git remote set-url origin https://github.com/Orca-Solutions/diamond-dog.git`). No tracked file linked to the old repository URL. The README and the naming rule in AGENTS.md and CLAUDE.md now name the new repository; folders, crates and the SPDX copyright line keep OrcaOS until a rename is decided.
+
+Verification: AGENTS.md and CLAUDE.md are identical; `reuse lint` passes; no other tracked file mentions the old repository URL.
+
+## October 27, 2026 — Conventional baseline for Scenario A
+
+Jason asked to push development forward on as many fronts as possible; this thread built the experiment plan's conventional baseline and scored the early-exit thresholds. Built in `experiment/conventional/`: the same deterministic Scenario A on Temporal (Rust SDK 1.1.0, dev server 1.32.0 from CLI 1.9.1), PostgreSQL 16 (the journal writer, budget and proposals), Podman 4.9.3 and Wasmtime 49.0.4 (one container per participant step, mounting only the holder's live grants), an approval service and a mail adapter worker. The shared reference implementation, task logic, inputs and mock mail service are unchanged. The harness now drives either build with the same tests and checks (`ORCA_PLATFORM=conventional`; Golem stays the default); where native evidence differs (oplog or Wasmtime trace, cards or mounts) the per-build difference is listed in the conventional README.
+
+Result: the conventional build passed the full suite at commit `166af6b` with a clean tree: tests 1 to 7 and the test 3 variant at P1 and P2, 20 repetitions per crash and race test and 100 for test 6, with 20/20 certified not started after the window in 7a, 7b and 7d (`experiment/results/2026-10-27-conventional/`). Counted with tokei 12.1.2 under the Golem build's rules: grants 518, approvals 202, recovery 304, inspection 214 (1,238 code lines), 43 configuration lines. Golem's 465, 93, 358 and 210 are 90%, 46%, 118% and 98% of the baseline, so Golem misses the plan's effort threshold (at most 50% in each category) for grants, recovery and inspection, and its 465 lines of grant code miss the zero rule. The early exit is not supported; by the plan's table the result is a candidate Diamond Dog contribution. The usability threshold stays unscored until the hands-on evaluation. Findings: revocation cascades natively here (so test 3 also re-grants the drafter's store grants, and running containers are stopped when their holder's grants narrow), Temporal re-runs code and never resends on its own, retried activities and the approval service needed crash-safe side effects (an outbox to the adapter), store refusals come from Wasmtime's trace, and a full restart takes under a second.
+
+Verification: the recorded suite above, with participant mounts and container flags checked against a fixed copy of the plan's grant table before and after it; trial runs of every test and variant before that; `reuse lint` passes. One fresh-context reviewer read the authorization and recovery slice and the harness refactor and found nothing major; its minor findings are fixed or recorded in the conventional README's review table. The Golem path of the refactored harness compiles but was not re-run, because this environment has no Golem server.
+
+Open: test 7a's reservation-release check reads only the journal's flag on both builds (the send's reservation is never drawn from the budget ledger); the two builds' participants are different binaries of the same task code; a Wasmtime trace shares stderr with the participant; the parity review, performance measurements and the AI variant remain. Merge belongs to Jason.
+
+## October 27, 2026 — Diamond Dog name in the README and docs
+
+Jason asked for the README to carry the Diamond Dog branding and for a general refresh of the repository docs. The product is Diamond Dog ("a delegation-first operating environment", primary line "Delegate work, not your identity."), following the brand book; the repository, folders, crates and SPDX copyright line keep the OrcaOS name because no rename has been ordered. The README now says plainly what is built on `main` (the provisional contract, the fake Diamond Dog with its CI job, Scenario A on Golem, the sensor observation draft from PR #7), what is in progress on branches (the conventional baseline, an experimental runtime skeleton) and what is planned (the real runtime, the inspector, the SDK). Also: the documentation index lists the real documents instead of scaffold placeholders, PROJECT_BRIEF.md and docs/SPEC.md say why they are empty, the agent entry points list the project's commands and the naming and vocabulary rules, and the interface, SDK, examples and experiment READMEs use the new name. No code, license header or license mapping changed.
+
+Verification: `reuse lint` passes; AGENTS.md and CLAUDE.md are identical; relative links in the touched files resolve; the touched prose avoids the Glossary's avoid-words.
 
 ## October 27, 2026 — An experimental runtime skeleton
 

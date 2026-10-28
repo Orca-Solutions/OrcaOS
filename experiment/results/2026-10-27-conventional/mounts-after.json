@@ -1,0 +1,132 @@
+[
+  {
+    "container": {
+      "capabilities_added": [],
+      "network": "none",
+      "read_only_root": true,
+      "security_options": [
+        "no-new-privileges"
+      ]
+    },
+    "declared": [
+      {
+        "path": "/stores/docs/c1@v1",
+        "writable": false
+      },
+      {
+        "path": "/stores/docs/c2@v1",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1.1",
+        "writable": true
+      }
+    ],
+    "holder": "processor-1",
+    "mounted": [
+      {
+        "path": "/stores/docs/c1@v1",
+        "writable": false
+      },
+      {
+        "path": "/stores/docs/c2@v1",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1.1",
+        "writable": true
+      }
+    ],
+    "ok": true,
+    "sources_in_run": true
+  },
+  {
+    "container": {
+      "capabilities_added": [],
+      "network": "none",
+      "read_only_root": true,
+      "security_options": [
+        "no-new-privileges"
+      ]
+    },
+    "declared": [
+      {
+        "path": "/stores/docs/c3@v1",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1.2",
+        "writable": true
+      }
+    ],
+    "holder": "processor-2",
+    "mounted": [
+      {
+        "path": "/stores/docs/c3@v1",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1.2",
+        "writable": true
+      }
+    ],
+    "ok": true,
+    "sources_in_run": true
+  },
+  {
+    "container": {
+      "capabilities_added": [],
+      "network": "none",
+      "read_only_root": true,
+      "security_options": [
+        "no-new-privileges"
+      ]
+    },
+    "declared": [],
+    "holder": "processor-2b",
+    "mounted": [],
+    "ok": true,
+    "sources_in_run": true
+  },
+  {
+    "container": {
+      "capabilities_added": [],
+      "network": "none",
+      "read_only_root": true,
+      "security_options": [
+        "no-new-privileges"
+      ]
+    },
+    "declared": [
+      {
+        "path": "/stores/out/A1.1",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1.2",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1/draft",
+        "writable": true
+      }
+    ],
+    "holder": "drafter",
+    "mounted": [
+      {
+        "path": "/stores/out/A1.1",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1.2",
+        "writable": false
+      },
+      {
+        "path": "/stores/out/A1/draft",
+        "writable": true
+      }
+    ],
+    "ok": true,
+    "sources_in_run": true
+  }
+]

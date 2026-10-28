@@ -4,11 +4,11 @@ Practical delivery policy v3.1.4. Read SOFTWARE_OPERATING_GUIDE.md and PR_WORKFL
 
 ## Commands
 <!-- Fill project commands; keep both entry points identical. -->
-- Install:
-- Dev server:
-- Focused tests:
-- Lint / typecheck: `reuse lint` (every file has a license; see REUSE.toml)
-- Build:
+- Install: Rust 1.88 or later (`rustup`); `reuse` for the license check
+- Dev server: `cd fake && cargo run -- serve --setup ../examples/diamond-dog-fake/household.json` (the fake Diamond Dog, 127.0.0.1:7477)
+- Focused tests: `cd fake && cargo test`; `cd runtime && cargo test` (the experimental runtime skeleton); `cd experiment && cargo test -p orca-ref` (the Golem suite needs Golem 1.6.0; see experiment/README.md)
+- Lint / typecheck: `reuse lint` (every file has a license; see REUSE.toml); `cargo clippy --all-targets -- -D warnings` in `fake/` and `runtime/`
+- Build: `cargo build` in `fake/`, `runtime/` or `experiment/`
 
 ## Start here
 
@@ -38,3 +38,4 @@ Read WORKING_RECORD.md, the relevant code, approved brief/decisions and docs ind
 ## Project-specific
 <!-- Approved exceptions, commands and conventions only. -->
 - Licensing (docs/decisions/0001-licensing.md): `sdk/`, `interfaces/` and `examples/` are MIT; everything else is GPL-3.0-or-later. Start every new source file with `SPDX-FileCopyrightText: The OrcaOS Authors` and the matching `SPDX-License-Identifier`, and keep REUSE.toml in step with any new top-level folder. Never copy GPL code into an MIT folder.
+- Naming: the product is Diamond Dog ("a delegation-first operating environment"). The repository is `orca-solutions/diamond-dog` (renamed from OrcaOS on 2026-10-28); folders, crates and the SPDX copyright line still say OrcaOS; do not rename them unless asked. Use the project Glossary's words (the Glossary and brand book live in the project files, outside this repo): grant or capability, not permission; scope or isolation, not sandbox; cancel, revoke or compensate, not undo; the receipt's actual state, not done; idempotent or reconciled, not exactly once.

@@ -1,0 +1,57 @@
+{
+  "base_seed": 20261020,
+  "configuration": {
+    "containerfile_sha256": "9f902eff5758015009131778032d1caa18858340f3f75cb998d6508f07d483d9",
+    "participant_wasm_sha256": "bd9246289c872f627435f470208145468ec0179aa214486e0a34df6b9ac278ad",
+    "schema_sha256": "4f7f5ce34669883bcfd0bd91c76b91a0483cbddef7bd8be22ada43dc4f68045b",
+    "services_binary_sha256": "f8057268ece73eb4efc477dc5a674a78164125caee5dad9d8b772a142bdd73b3",
+    "stack_script_sha256": "1024e34f9c7fec24a21c60ad9fc5b2a90dba4684fe95a9c8066b93f99eeea0d4",
+    "validity_window_ms": 600000
+  },
+  "host": {
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpus": "4",
+    "kernel": "Linux 6.18.44-fc-v165 x86_64",
+    "memory": "16091 MiB",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "mock_service": {
+    "binary_sha256": "8d72ac1128692f162eb11663eeaea9344550e68f6e037378bd4e040f8bc5d05e"
+  },
+  "platform": {
+    "participant_image": "eba4499bfa0ad4f2fd463362e6377d47ba98c17ff39494fbb58906d61e119a78",
+    "podman": "podman version 4.9.3",
+    "postgresql": "postgres (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "temporal_binary_sha256": "a43fdfbb6403db61afadaf02fb964a98fc96886736bb743f2294f590a5d2916d",
+    "temporal_cli_and_dev_server": "temporal version 0.0.0-DEV (Server 1.32.0, UI 2.54.1)",
+    "temporal_cli_source": "github.com/temporalio/cli v1.9.1, built from source",
+    "temporalio_sdk": "version = \"1.1.0\"",
+    "tokio_postgres": "version = \"0.7.18\"",
+    "wasmtime": "wasmtime 49.0.4"
+  },
+  "protocol": "OrcaOS experiment plan, protocol as of 2026-10-20",
+  "repository_commit": "166af6b7d252474a346d6fee06291b2bb8f71638",
+  "repository_dirty": false,
+  "synthetic_inputs": [
+    {
+      "object": "c1@v1",
+      "sha256": "581889ec5bb565efcdd706f79bb56e2e76ffb219d0a90e8a7134f22c9d854b0b"
+    },
+    {
+      "object": "c1@v2",
+      "sha256": "bd4e54b106820b5d2056a5b360e140464a479fcd52e4c28ad5c3701effad5c69"
+    },
+    {
+      "object": "c2@v1",
+      "sha256": "98743118f24e29ff4ab5653d9b923b1a20b657cc455aae8e8eb09a6f2d12c3e0"
+    },
+    {
+      "object": "c3@v1",
+      "sha256": "faf1ebee0792beda6481c718679881df6cbff82c4746631aa849edccc069a527"
+    },
+    {
+      "object": "tax-return-2025",
+      "sha256": "106cd7607fce2e480b3da39556b950dd23b5bd0a539f2ec864c8f060da5807f2"
+    }
+  ]
+}
