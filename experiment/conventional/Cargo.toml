@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: The OrcaOS Authors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Scenario A on the conventional composition: Temporal for durable work,
+# PostgreSQL for the journal, grant records and budget, Podman and Wasmtime
+# for the participants, a mail adapter service and an approval service.
+[package]
+name = "conventional"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+# The Temporal macros expand to paths in these crates.
+futures = "0.3"
+orca-ref = { path = "../shared/orca-ref" }
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+temporalio-client = "1.1.0"
+temporalio-common = "1.1.0"
+temporalio-macros = "1.1.0"
+temporalio-sdk = "1.1.0"
+temporalio-workflow = "1.1.0"
+tokio = { version = "1", features = ["full"] }
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1"] }

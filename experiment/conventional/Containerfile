@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: The OrcaOS Authors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# The participant image: Wasmtime and the participant component, nothing
+# else of ours. Every run mounts its stores under /stores; the image itself
+# holds only the empty mount points. Built from a context directory holding
+# the wasmtime binary and participant.wasm (see README.md, "Running it").
+#
+# Scorecard: configuration (counted separately from code). Category: grants.
+
+FROM docker.io/library/ubuntu:24.04@sha256:24737cef17f4e22b1977df7d9a05e77c4e28b7da5b8911f8d8ccda136bf3573c
+COPY wasmtime /usr/local/bin/wasmtime
+COPY participant.wasm /opt/participant.wasm
+RUN mkdir -p /stores/docs /stores/out
+ENTRYPOINT ["/usr/local/bin/wasmtime", "run", "-C", "cache=n", "--dir", "/stores", "/opt/participant.wasm"]

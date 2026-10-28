@@ -12,9 +12,9 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::golem::{lit, Golem};
 use crate::inspector;
 use crate::mock::Mock;
+use crate::platform::Platform;
 use crate::scenario::{activity_state, entries, outcome_state, receipt, Run};
 
 #[derive(Serialize)]
@@ -64,11 +64,12 @@ pub fn jitter(seed: u64, max_ms: u64) -> Duration {
 
 const RID: &str = "A1:send:auth-0001";
 const SETTLE: Duration = Duration::from_secs(30);
-/// Golem resumes interrupted agents some seconds after a restart.
+/// Golem resumes interrupted agents some seconds after a restart; Temporal
+/// retries an attempt once its heartbeat times out.
 const RECOVERY: Duration = Duration::from_secs(120);
 
 pub struct Ctx<'a> {
-    pub golem: &'a Golem,
+    pub platform: &'a Platform,
     pub mock: &'a Mock,
 }
 
@@ -98,7 +99,7 @@ pub fn repeat(ctx: &Ctx, test: &str, run: String, rep: u32, seed: u64) -> Rep {
     let body = body(test).expect("known test");
     let started = Instant::now();
     let started_ms = now_ms();
-    let r = Run::new(run.clone(), ctx.golem, ctx.mock);
+    let r = Run::new(run.clone(), ctx.platform, ctx.mock);
     let mut checks = Vec::new();
     let mut notes = json!({});
 
@@ -142,21 +143,22 @@ fn ready(r: &Run) -> Result<String, String> {
 // Test 1: an unrelated read is denied.
 fn t1(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result<(), String> {
     let loaded = r.setup()?;
-    let attempts: Value = serde_json::from_str(&r.call(&r.agent2("Processor1", "processor-1"), "misbehave", &[])?).map_err(|e| e.to_string())?;
+    let attempts = r.misbehave()?;
     let all_refused = attempts.as_array().is_some_and(|a| a.len() == 4 && a.iter().all(|x| x["allowed"] == false));
     checks.push(check("the store refused all four", all_refused, attempts.clone()));
 
-    // Golem recorded each refusal in the processor's oplog; the inspector
-    // journals them with the store as their source.
-    let oplog = r.golem.oplog(&r.agent2("Processor1", "processor-1"))?;
-    let denials = inspector::oplog_denials(&oplog);
+    // The store recorded each refusal (Golem in the processor's oplog,
+    // Wasmtime in its trace); the inspector journals them with the store as
+    // their source.
+    let denials = r.store_denials()?;
     let rows: Vec<(String, String, String, String)> =
         denials.iter().map(|(op, object, reason)| ("processor-1".into(), op.clone(), object.clone(), reason.clone())).collect();
     r.supervisor("record_denials", &[&serde_json::to_string(&rows).unwrap()])?;
-    checks.push(check("the processor made the attempts (Golem's oplog shows four refused calls)", denials.len() == 4, json!(denials)));
+    let made = format!("the processor made the attempts ({} shows four refused calls)", r.platform.denial_record());
+    checks.push(check(&made, denials.len() == 4, json!(denials)));
 
     let journal = r.journal();
-    let journaled: Vec<&Value> = entries(&journal, "denial").into_iter().filter(|d| d["source"]["name"] == "golem-kv").collect();
+    let journaled: Vec<&Value> = entries(&journal, "denial").into_iter().filter(|d| d["source"]["name"] == r.platform.store_source()).collect();
     let objects: Vec<&str> = journaled.iter().filter_map(|d| d["object"].as_str()).collect();
     let expected = ["docs/tax-return-2025", "docs/doc-0005", "docs/c1@v2", "docs/c1@v1"];
     checks.push(check(
@@ -169,9 +171,9 @@ fn t1(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
     let mut hashes = Vec::new();
     for item in loaded.as_array().into_iter().flatten() {
         let object = item["object"].as_str().unwrap_or_default();
-        let now: Value = serde_json::from_str(&r.call(&r.agent("Seeder"), "read", &[&lit("docs"), &lit(object)])?).unwrap_or_default();
-        unchanged &= now["hash"] == item["hash"];
-        hashes.push(json!({ "object": object, "before": item["hash"], "after": now["hash"] }));
+        let now = r.snapshot_hash(object)?;
+        unchanged &= now == item["hash"];
+        hashes.push(json!({ "object": object, "before": item["hash"], "after": now }));
     }
     checks.push(check("snapshot hashes are unchanged", unchanged, json!(hashes)));
     notes["oplog_denials"] = json!(denials.len());
@@ -202,7 +204,7 @@ fn t2(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
 
     // An approval adds to the send grant; it never widens it. A proposal
     // addressed outside the grant is refused at mint even once approved.
-    let proposal = r.call(&r.agent("ApprovalPath"), "submit", &[&lit("A1"), &lit("drafter"), &lit(&recipient.to_string())])?;
+    let proposal = r.submit(&recipient)?;
     let minted = r.approve(&proposal, "g-send");
     let refused = matches!(&minted, Err(e) if e.contains("does not cover other@mock.test"));
     checks.push(check("an approved proposal to a recipient outside the grant is refused at mint", refused, json!(minted.err())));
@@ -228,7 +230,7 @@ fn t3(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result<
         r.supervisor("revoke", &[grant])?;
     }
     std::thread::sleep(jitter(seed, 500));
-    let restart = r.golem.kill_and_restart()?;
+    let restart = r.platform.kill_and_restart()?;
     r.release_all();
     notes["restart_ms"] = json!(restart.as_millis() as u64);
 
@@ -247,9 +249,23 @@ fn t3(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result<
     checks.push(check("the attempt log is empty", attempts(r).is_empty(), json!(attempts(r))));
 
     // A new grant and approval use a new request identifier.
-    r.supervisor("grant", &["g-send-2", "A1", "A1", "send", "accountant@mock.test"])?;
-    r.supervisor("grant", &["g-d-propose-2", "drafter", "A1", "submit-proposal", "approval-path"])?;
-    let draft: Value = serde_json::from_str(&r.call(&r.agent2("Activity", "A1"), "draft", &[])?).map_err(|e| e.to_string())?;
+    let mut regrants = vec![
+        ["g-send-2", "A1", "A1", "send", "accountant@mock.test"],
+        ["g-d-propose-2", "drafter", "A1", "submit-proposal", "approval-path"],
+    ];
+    if let Platform::Conventional(_) = r.platform {
+        // Containers mount only live grants, so revoking A1's grants took the
+        // drafter's store access with them; Golem's cards did not narrow.
+        regrants.extend([
+            ["g-d-read-a11-2", "drafter", "A1", "read", "out/A1.1"],
+            ["g-d-read-a12-2", "drafter", "A1", "read", "out/A1.2"],
+            ["g-d-write-2", "drafter", "A1", "write", "out/A1/draft"],
+        ]);
+    }
+    for grant in &regrants {
+        r.supervisor("grant", grant)?;
+    }
+    let draft = r.draft()?;
     let second = draft["proposal"].as_str().ok_or(format!("no second proposal: {draft}"))?.to_string();
     let approved = r.approve(&second, "g-send-2")?;
     let rid = format!("A1:send:{}", approved.authorization);
@@ -387,21 +403,26 @@ fn card_grants(card: &Value) -> Vec<String> {
 // Test 5: a participant is replaced.
 fn t5(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result<(), String> {
     r.setup()?;
-    let a12 = r.agent2("Activity", "A1.2");
-    r.call(&r.agent2("Activity", "A1.1"), "run_processor_1", &[])?;
-    let extracted = r.call(&a12, "step_processor_2", &[&lit("processor-2"), &lit("extract")])?;
+    r.run_processor_1()?;
+    let extracted = r.step_processor_2("processor-2", "extract")?;
     notes["extract"] = json!(extracted);
 
-    let old_agent = r.agent2("Processor2", "processor-2");
-    let replaced = r.supervisor("replace", &["A1.2", "processor-2", &old_agent, "processor-2b"])?;
-    let replaced: Value = serde_json::from_str(&replaced).unwrap_or(json!(replaced));
-    checks.push(check("the old participant's store access is narrowed natively", replaced["native"] == "Ok(())", replaced.clone()));
+    let mounted_before = match r.platform {
+        Platform::Conventional(c) => c.mounts(&r.id, "processor-2")?,
+        Platform::Golem(_) => Value::Null,
+    };
+    let replaced = r.replace("A1.2", "processor-2", "processor-2b")?;
+    let narrowed = match r.platform {
+        Platform::Golem(_) => replaced["native"] == "Ok(())",
+        Platform::Conventional(c) => replaced["native"].is_object() && c.mounts(&r.id, "processor-2")? == json!([]),
+    };
+    checks.push(check("the old participant's store access is narrowed natively", narrowed, replaced.clone()));
 
-    let direct = r.call(&old_agent, "finish", &[&lit("c3@v1")])?;
-    checks.push(check("the old processor, called directly, is refused by the store", direct.contains("permission denied"), json!(direct)));
-    let via = r.call(&a12, "step_processor_2", &[&lit("processor-2"), &lit("finish")])?;
+    let direct = r.finish_directly("processor-2")?;
+    checks.push(check("the old processor, called directly, is refused by the store", r.refused_by_store(&direct), json!(direct)));
+    let via = r.step_processor_2("processor-2", "finish")?;
     checks.push(check("the coordinator refuses to run the old processor", via.starts_with("refused"), json!(via)));
-    let finished = r.call(&a12, "step_processor_2", &[&lit("processor-2b"), &lit("finish")])?;
+    let finished = r.step_processor_2("processor-2b", "finish")?;
     checks.push(check("the replacement finishes from the retained progress", finished.contains("\"written\""), json!(finished)));
 
     let journal = r.journal();
@@ -429,23 +450,38 @@ fn t5(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
     checks.push(check("every retained output stays attributed to its producer", attributed, json!(outputs)));
     checks.push(check("A1.2 keeps its identity and is running", activity_state(&journal, "A1.2") == "running", json!(activity_state(&journal, "A1.2"))));
 
-    let old_cards = r.golem.cards(&old_agent)?;
-    let new_cards = r.golem.cards(&r.agent2("Processor2Alt", "processor-2b"))?;
-    let initial = |cards: &Value| cards["cards"].as_array().and_then(|c| c.iter().find(|c| c["type"] == "Polymorphic")).map(card_grants);
-    let narrowing = old_cards["cards"].as_array().is_some_and(|c| c.iter().any(|c| c["managedBy"]["type"] == "RuntimeDerived" && card_grants(c).is_empty()));
-    checks.push(check(
-        "the card list shows the new participant holding only equivalent grants",
-        initial(&new_cards).is_some() && initial(&new_cards) == initial(&old_cards) && new_cards["cards"].as_array().map(Vec::len) == Some(1),
-        json!({ "old": initial(&old_cards), "new": initial(&new_cards) }),
-    ));
-    checks.push(check("the card list shows the old participant's narrowing card", narrowing, old_cards));
+    match r.platform {
+        Platform::Golem(golem) => {
+            let old_cards = golem.cards(&r.agent2("Processor2", "processor-2"))?;
+            let new_cards = golem.cards(&r.agent2("Processor2Alt", "processor-2b"))?;
+            let initial = |cards: &Value| cards["cards"].as_array().and_then(|c| c.iter().find(|c| c["type"] == "Polymorphic")).map(card_grants);
+            let narrowing = old_cards["cards"].as_array().is_some_and(|c| c.iter().any(|c| c["managedBy"]["type"] == "RuntimeDerived" && card_grants(c).is_empty()));
+            checks.push(check(
+                "the card list shows the new participant holding only equivalent grants",
+                initial(&new_cards).is_some() && initial(&new_cards) == initial(&old_cards) && new_cards["cards"].as_array().map(Vec::len) == Some(1),
+                json!({ "old": initial(&old_cards), "new": initial(&new_cards) }),
+            ));
+            checks.push(check("the card list shows the old participant's narrowing card", narrowing, old_cards));
+        }
+        Platform::Conventional(c) => {
+            // The conventional build's native record is what each holder's
+            // next container would mount.
+            let (old_now, new_now) = (c.mounts(&r.id, "processor-2")?, c.mounts(&r.id, "processor-2b")?);
+            checks.push(check(
+                "the mount list shows the new participant holding only equivalent grants",
+                new_now == mounted_before && new_now.as_array().is_some_and(|m| !m.is_empty()),
+                json!({ "old_before": mounted_before, "new": new_now }),
+            ));
+            checks.push(check("the mount list shows the old participant mounting nothing", old_now == json!([]), old_now));
+        }
+    }
     Ok(())
 }
 
 // Test 6: two children share one budget.
 fn t6(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result<(), String> {
     r.supervisor("setup", &[])?;
-    let whole = (10 * 60 * 1000).to_string();
+    let whole: u64 = 10 * 60 * 1000;
     let barrier = std::sync::Barrier::new(2);
 
     let results: Vec<String> = std::thread::scope(|s| {
@@ -454,9 +490,8 @@ fn t6(r: &Run, _seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
             .map(|child| {
                 let (barrier, whole) = (&barrier, &whole);
                 s.spawn(move || {
-                    let agent = r.agent2("Activity", child);
                     barrier.wait();
-                    r.call(&agent, "reserve", &[&lit(&format!("{child}:reserve:race")), whole]).unwrap_or_else(|e| e)
+                    r.reserve(child, &format!("{child}:reserve:race"), *whole).unwrap_or_else(|e| e)
                 })
             })
             .collect();
@@ -490,7 +525,7 @@ fn crash_then(r: &Run, seed: u64, point: &str, lose_request: bool, action: &dyn 
 
     std::thread::sleep(jitter(seed, 300));
     let crashed_at = now_ms();
-    let restart = r.golem.kill_and_restart()?;
+    let restart = r.platform.kill_and_restart()?;
     // The crashed process's hold is stale. The "recover" hold stays, so the
     // adapter cannot act on recovery before the action below commits.
     r.release_at(point);
@@ -532,7 +567,8 @@ fn no_resend(r: &Run, crashed_at: u64, journal: &Value, checks: &mut Vec<Check>)
     checks.push(check("zero submission attempts after the crash, so none after the cancellation or revocation", late.is_empty(), json!(late)));
     checks.push(check("nothing is re-dispatched", entries(journal, "re_dispatch").is_empty(), json!(entries(journal, "re_dispatch"))));
     let wire_late = after(&r.mock.entries("wire", &r.id), crashed_at);
-    checks.push(check("Golem did not resend the request on its own", wire_late.is_empty(), json!(wire_late)));
+    let engine = format!("{} did not resend the request on its own", r.platform.engine());
+    checks.push(check(&engine, wire_late.is_empty(), json!(wire_late)));
 }
 
 fn status_checked(journal: &Value) -> bool {
@@ -633,7 +669,7 @@ fn t7e(r: &Run, seed: u64, checks: &mut Vec<Check>, notes: &mut Value) -> Result
 /// After the validity windows close: 7a, 7b and 7d end certified not started,
 /// recorded without reopening anything.
 pub fn after_window(ctx: &Ctx, rep: &Rep) -> Vec<Check> {
-    let r = Run::new(rep.run.clone(), ctx.golem, ctx.mock);
+    let r = Run::new(rep.run.clone(), ctx.platform, ctx.mock);
     let journal = r.journal();
     let outcome = receipt(&journal, RID)["outcome"].clone();
     let certified = outcome["state"] == "reconciled"

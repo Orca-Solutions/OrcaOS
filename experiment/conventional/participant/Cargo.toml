@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: The OrcaOS Authors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# The processors and the drafter as one WASI command component, built for
+# wasm32-wasip2 and run under Wasmtime inside a Podman container. They read
+# and write only through the files the container mounts for them.
+[package]
+name = "participant"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+orca-ref = { path = "../../shared/orca-ref" }
+scenario-task = { path = "../../shared/scenario-task" }
+serde_json = "1"
