@@ -20,11 +20,8 @@ Diamond Dog is in development. The design is written down, a first experiment ha
 | The fake Diamond Dog | [fake/](fake/README.md) | A local Rust test double that answers the contract over HTTP, refuses what the contract says to refuse and writes the ledger. CI runs its fixtures and lints on every change. It keeps nothing durable, isolates nothing and checks no identity. |
 | Scenario A on Golem | [experiment/](experiment/README.md) | The first experiment: one bounded scenario (three contracts, one message, your sign-off) built on a restricted Golem 1.6.0. It passed the seven acceptance tests on 2026-10-20. That is a conformance result, not a security claim. |
 | Conventional baseline for Scenario A | [experiment/conventional/](experiment/conventional/README.md) | The same scenario on Temporal, PostgreSQL, Podman and Wasmtime, run by the same harness and tests. It passed the same seven acceptance tests with the same repetitions on 2026-10-27. Golem needed about as much custom code as this baseline for grants, recovery and inspection, so it misses the plan's effort threshold. |
+| Experimental runtime skeleton | [runtime/](runtime/README.md) | The fake's surfaces on top of an enforcement core of its own: a journal written to disk before anything changes, single-use authorizations checked and used up in one step, revocation that reaches everything drawn from a grant, and restart rules that never bring authority back. It passes the same fixtures as the fake, and CI runs them. Experimental: no identity, no isolation, mock services, and a restart closes open work. Nothing should depend on it yet. |
 | Sensor observation interface 0.1 | [interfaces/sensor-observation/](interfaces/sensor-observation/README.md) | A draft of how a small device publishes readings and coverage. No implementation has shipped. |
-
-**In progress, not on `main`:**
-
-- An experimental runtime skeleton in Rust: the fake's surfaces on top of its own enforcement core.
 
 **Planned, not built:**
 
@@ -53,6 +50,7 @@ The record keeps what a participant claimed apart from what the system observed,
 | Read the product-facing contracts | [interfaces/diamond-dog/](interfaces/diamond-dog/) |
 | Inspect the reference fixtures | [examples/diamond-dog-fake/](examples/diamond-dog-fake/README.md) |
 | Read the Scenario A results and findings about Golem | [experiment/README.md](experiment/README.md) |
+| Follow the experimental runtime skeleton | [runtime/README.md](runtime/README.md) and [its decision](docs/decisions/0003-runtime-skeleton.md) |
 | See why things are the way they are | [docs/decisions/](docs/decisions/) and the [documentation index](docs/README.md) |
 | Follow the delivery rules | [Operating guide](SOFTWARE_OPERATING_GUIDE.md) and [PR workflow](PR_WORKFLOW.md) |
 

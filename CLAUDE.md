@@ -6,9 +6,9 @@ Practical delivery policy v3.1.4. Read SOFTWARE_OPERATING_GUIDE.md and PR_WORKFL
 <!-- Fill project commands; keep both entry points identical. -->
 - Install: Rust 1.88 or later (`rustup`); `reuse` for the license check
 - Dev server: `cd fake && cargo run -- serve --setup ../examples/diamond-dog-fake/household.json` (the fake Diamond Dog, 127.0.0.1:7477)
-- Focused tests: `cd fake && cargo test`; `cd experiment && cargo test -p orca-ref` (the Golem suite needs Golem 1.6.0; see experiment/README.md)
-- Lint / typecheck: `reuse lint` (every file has a license; see REUSE.toml); `cargo clippy --all-targets -- -D warnings` in `fake/`
-- Build: `cargo build` in `fake/` or `experiment/`
+- Focused tests: `cd fake && cargo test`; `cd runtime && cargo test` (the experimental runtime skeleton); `cd experiment && cargo test -p orca-ref` (the Golem suite needs Golem 1.6.0; see experiment/README.md)
+- Lint / typecheck: `reuse lint` (every file has a license; see REUSE.toml); `cargo clippy --all-targets -- -D warnings` in `fake/` and `runtime/`
+- Build: `cargo build` in `fake/`, `runtime/` or `experiment/`
 
 ## Start here
 
