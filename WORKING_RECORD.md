@@ -1,5 +1,11 @@
 # Working record
 
+## October 28, 2026 — Repository renamed to diamond-dog
+
+Jason renamed the GitHub repository from `Orca-Solutions/OrcaOS` to `Orca-Solutions/diamond-dog`. GitHub redirects the old URL, but clones should point at the new one (`git remote set-url origin https://github.com/Orca-Solutions/diamond-dog.git`). No tracked file linked to the old repository URL. The README and the naming rule in AGENTS.md and CLAUDE.md now name the new repository; folders, crates and the SPDX copyright line keep OrcaOS until a rename is decided.
+
+Verification: AGENTS.md and CLAUDE.md are identical; `reuse lint` passes; no other tracked file mentions the old repository URL.
+
 ## October 27, 2026 — Conventional baseline for Scenario A
 
 Jason asked to push development forward on as many fronts as possible; this thread built the experiment plan's conventional baseline and scored the early-exit thresholds. Built in `experiment/conventional/`: the same deterministic Scenario A on Temporal (Rust SDK 1.1.0, dev server 1.32.0 from CLI 1.9.1), PostgreSQL 16 (the journal writer, budget and proposals), Podman 4.9.3 and Wasmtime 49.0.4 (one container per participant step, mounting only the holder's live grants), an approval service and a mail adapter worker. The shared reference implementation, task logic, inputs and mock mail service are unchanged. The harness now drives either build with the same tests and checks (`ORCA_PLATFORM=conventional`; Golem stays the default); where native evidence differs (oplog or Wasmtime trace, cards or mounts) the per-build difference is listed in the conventional README.

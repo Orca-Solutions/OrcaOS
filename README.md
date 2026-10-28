@@ -6,7 +6,7 @@ Diamond Dog is a delegation-first operating environment: an open-source layer on
 
 A little less blind faith, in other words.
 
-The repository is still named OrcaOS, the project's earlier working name. Folder names, crate names and license headers keep that name until a rename is decided. Project site: [diamonddog.orcasolutions.dev](https://diamonddog.orcasolutions.dev).
+The repository was renamed from OrcaOS, the project's earlier working name, to diamond-dog on October 28, 2026. Folder names, crate names and license headers keep the OrcaOS name until a rename is decided. Project site: [diamonddog.orcasolutions.dev](https://diamonddog.orcasolutions.dev).
 
 ## Where it stands
 
